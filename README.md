@@ -30,8 +30,8 @@
 - Download the firmware and flash using `0x0` offset
 
 # WiFi Key
-WiFi SSID: `ESP32_8Ch_Smart_Switch`
-Password: `ESP32-admin`
+- WiFi SSID: `ESP32_8Ch_Smart_Switch`
+- Password: `ESP32-admin`
 
 # Activation
 - Go to `wifi settings` and connect to your home wifi after the NTP is synchronized everything will works.
