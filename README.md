@@ -30,7 +30,7 @@
 - Download the firmware and flash using `0x0` offset
 
 # WiFi Key
-WiFi SSID: `ESP32_8CH_Smart_Switch`
+WiFi SSID: `ESP32_8Ch_Smart_Switch`
 Password: `ESP32-admin`
 
 # Activation
