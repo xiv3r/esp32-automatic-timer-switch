@@ -23,6 +23,16 @@
 - Anti-Reset Protection
 - Works Offline after NTP is synchronized
 
+# Suitable
+- Home Automation
+- Farms
+- Livestocks 
+- Buildings
+- Water pumping station
+- Greenhouses
+- Automatic Garden Sprinkler System 
+- So much more...
+
 # Note
 - In case the ntp server is inactive to maintain the relay switch time precision control add a 5vdc battery for esp32 and separate the 5vdc relay power supply adaptor.
 
