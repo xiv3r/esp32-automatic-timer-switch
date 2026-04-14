@@ -10,7 +10,7 @@
 # Installation
 - Download the firmware and flash using `0x0` offset
 
-# Pinouts
+# Schematics
 ```
 RELAY     ESP32 38P
 VCC _____ 5VIN 
