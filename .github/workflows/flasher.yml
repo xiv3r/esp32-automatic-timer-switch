@@ -1,0 +1,83 @@
+name: Flasher
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+    
+jobs:
+  download-and-release:
+    runs-on: ubuntu-24.04-arm
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Download files
+      run: |
+        mkdir -p downloads
+        cd downloads
+        wget -O ESPFlash.xapk "https://d-13.winudf.com/b/XAPK/aW8uc2VyaWFsZmxvdy5lc3BmbGFzaF80MV8zZTQ3YTBmZA?_fn=RVNQRmxhc2gtRVNQMzIvRVNQODI2NkZsYXNoZXJfMS4yLjlfQVBLUHVyZS54YXBr&_p=aW8uc2VyaWFsZmxvdy5lc3BmbGFzaA%3D%3D&download_id=no_1594906870222671&is_hot=false&k=e6d7cefaa935e3df40d8bb7ea5830c2069deee65"
+        wget -O ArduinoDroid_Premium_v7.4.1.apk --no-check-certificate "https://fs21.uploadrar.com:183/d/mtswakczamubi775osh6zkmizzyxmyawe7tdygeigpg2fa3cfzixac7ylijj6evybkjoye4g/ArduinoDroid-Arduino-ESPIDEv7.4.1b872arm648.0_edbyyouarefinished-a2zapk.io.apk"
+        wget -O Arduino_2.3.8_winx64.exe "https://github.com/arduino/arduino-ide/releases/download/2.3.8/arduino-ide_2.3.8_Windows_64bit.exe"
+         
+    - name: Determine release tag
+      id: get_tag
+      run: |
+        if [ "${{ github.event_name }}" == "release" ]; then
+          TAG_NAME="${{ github.event.release.tag_name }}"
+        else
+          TAG_NAME="flasher"
+        fi
+        echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+
+    - name: Delete existing release assets
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { data: releases } = await github.rest.repos.listReleases({
+            owner: context.repo.owner,
+            repo: context.repo.repo
+          });
+          
+          const targetRelease = releases.find(release => release.tag_name === '${{ steps.get_tag.outputs.tag_name }}');
+          
+          if (targetRelease) {
+            console.log(`Found release with tag: ${{ steps.get_tag.outputs.tag_name }}`);
+            console.log(`Release ID: ${targetRelease.id}`);
+            
+            const { data: assets } = await github.rest.repos.listReleaseAssets({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: targetRelease.id
+            });
+            
+            console.log(`Found ${assets.length} assets to delete`);
+            
+            for (const asset of assets) {
+              console.log(`Deleting asset: ${asset.name} (ID: ${asset.id})`);
+              await github.rest.repos.deleteReleaseAsset({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                asset_id: asset.id
+              });
+            }
+            
+            console.log('All existing assets deleted');
+          } else {
+            console.log(`No release found with tag: ${{ steps.get_tag.outputs.tag_name }}`);
+          }
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Upload files to existing release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ steps.get_tag.outputs.tag_name }}
+        files: |
+            downloads/*.*
+            
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
