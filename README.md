@@ -23,6 +23,7 @@
 - Persistent data (Survive Power loss)
 - Anti-Reset Protection
 - Works Offline after NTP is synchronized
+- 99% RTC+NTP accuracy rate
 
 # Suitable
 - Home Automation
