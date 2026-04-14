@@ -37,7 +37,7 @@
 - In case the ntp server is inactive to maintain the relay switch time precision control add a 5vdc battery for esp32 and separate the 5vdc relay power supply adaptor.
 
 # Installation
-- Download the firmware and flash using `0x0` offset
+- Download the [flasher](https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/flasher) and firmware then flash using `0x0` offset
 
 # WiFi Key
 - WiFi SSID: `ESP32_8Ch_Smart_Switch`
