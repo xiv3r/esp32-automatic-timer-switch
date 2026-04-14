@@ -12,7 +12,7 @@
 #define EEPROM_VERSION 1
 
 // WiFi AP Configuration - Changed from const to variables
-char ap_ssid[32] = "ESP32_8Ch_Smart_Switch";
+char ap_ssid[32] = "ESP32_8CH_Timer_Switch";
 char ap_password[64] = "ESP32-admin";
 
 // DNS and Web Server
