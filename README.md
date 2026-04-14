@@ -40,7 +40,8 @@
 - Download the [flasher](https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/flasher) and [firmware](https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/esp32-8ch-automatic-switch.bin) then flash using `0x0` offset
 
 # WiFi Key
-- WiFi SSID: `ESP32_8Ch_Smart_Switch`
+`Note: Take note your wifi credentials reset doesn't supported (anti-reset protection)` 
+- WiFi SSID: `ESP32_8CH_Timer_Switch`
 - Password: `ESP32-admin`
 
 # Activation
