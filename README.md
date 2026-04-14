@@ -2,10 +2,29 @@
 - ESP32 30P/38P Pins
 - 8-Channel Relay
 - 10 Dupont Wire
+- Wifi for NTP/RTC sync
+- 5vDC Battery (Maintain Power and Timer)(optional)
 
 # Arduino Libraries
 - ArduinoJson
 - NTPClient
+
+# Features 
+- Captive Portal
+- Custom Wifi settings 
+- Manual and Automatic Switch
+- Control Doesn't works if time is not synchronized
+- Lightweight and More Responsive Web User Interface 
+- ESP32 NTP/RTC Auto synchronization
+- Wifi Client mode for NTP/RTC time synchronization
+- Support 1--8 Channel Relay
+- Each Relay have 4 start and stop schedule a total of 8 schedules
+- Persistent data (Survive Power loss)
+- Anti-Reset Protection
+- Works Offline after NTP is synchronized
+
+### Note
+- In case the ntp server is inactive to maintain the relay switch time precision control add a 5vdc battery for esp32 and separate the 5vdc relay power supply adaptor.
 
 # Installation
 - Download the firmware and flash using `0x0` offset
