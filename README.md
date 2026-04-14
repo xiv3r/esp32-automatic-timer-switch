@@ -3,9 +3,9 @@
 - 8-Channel Relay
 - 10 Dupont Wire
 
-# Arduino Library
-- NTPClient
+# Arduino Libraries
 - ArduinoJson
+- NTPClient
 
 # Installation
 - Download the firmware and flash using `0x0` offset
