@@ -5,6 +5,8 @@
 #include <DNSServer.h>
 #include <EEPROM.h>
 #include <ArduinoJson.h>
+#include <sys/time.h>   // Added for settimeofday()
+#include <time.h>       // Added for time() and localtime()
 
 // EEPROM Configuration
 #define EEPROM_SIZE 2048
@@ -73,7 +75,7 @@ bool wifiConnected = false;
 unsigned long lastNTPSync = 0;
 const unsigned long NTP_SYNC_INTERVAL = 1000; // 1 seconds
 
-// HTML Pages
+// HTML Pages (unchanged)
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html>
@@ -758,12 +760,15 @@ void setup() {
       Serial.println("\nConnected to WiFi");
       Serial.println(WiFi.localIP());
       
-      // Initialize NTP
+      // Initialize NTP and set system time
       timeClient.setPoolServerName(sysConfig.ntp_server);
       timeClient.setTimeOffset(sysConfig.gmt_offset);
       timeClient.begin();
       if (timeClient.update()) {
-        Serial.println("NTP time synchronized");
+        time_t epoch = timeClient.getEpochTime();
+        struct timeval tv = { .tv_sec = epoch, .tv_usec = 0 };
+        settimeofday(&tv, nullptr);
+        Serial.println("System time set from NTP");
       }
     }
   }
@@ -785,11 +790,14 @@ void loop() {
   dnsServer.processNextRequest();
   server.handleClient();
   
-  // Update NTP time
+  // Update NTP and set system time
   if (wifiConnected && millis() - lastNTPSync > NTP_SYNC_INTERVAL) {
     if (timeClient.update()) {
       lastNTPSync = millis();
-      Serial.println("NTP time synchronized");
+      time_t epoch = timeClient.getEpochTime();
+      struct timeval tv = { .tv_sec = epoch, .tv_usec = 0 };
+      settimeofday(&tv, nullptr);
+      Serial.println("System time updated from NTP");
     }
   }
   
@@ -845,12 +853,12 @@ void setupWebServer() {
 }
 
 void processRelaySchedules() {
-  if (!wifiConnected) return;
-  
-  unsigned long currentEpoch = timeClient.getEpochTime();
-  if (currentEpoch < 100000) return; // Invalid time
-  
-  struct tm *timeinfo = localtime((time_t*)&currentEpoch);
+  // Use system time instead of NTP client
+  time_t now;
+  time(&now);
+  if (now < 1609459200) return; // Invalid time (before 2021-01-01)
+
+  struct tm *timeinfo = localtime(&now);
   
   for (int i = 0; i < NUM_RELAYS; i++) {
     if (relayConfigs[i].manualOverride) {
@@ -1057,9 +1065,12 @@ void handleGetTime() {
   DynamicJsonDocument doc(128);
   char timeStr[9];
   
-  if (wifiConnected && timeClient.getEpochTime() > 100000) {
+  time_t now;
+  time(&now);
+  if (now > 1609459200) {  // Valid time after Jan 1, 2021
+    struct tm *timeinfo = localtime(&now);
     sprintf(timeStr, "%02d:%02d:%02d", 
-            timeClient.getHours(), timeClient.getMinutes(), timeClient.getSeconds());
+            timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
   } else {
     strcpy(timeStr, "--:--:--");
   }
@@ -1198,7 +1209,11 @@ void handleSaveNTP() {
     if (wifiConnected) {
       timeClient.setPoolServerName(sysConfig.ntp_server);
       timeClient.setTimeOffset(sysConfig.gmt_offset);
-      timeClient.update();
+      if (timeClient.update()) {
+        time_t epoch = timeClient.getEpochTime();
+        struct timeval tv = { .tv_sec = epoch, .tv_usec = 0 };
+        settimeofday(&tv, nullptr);
+      }
     }
     
     server.send(200, "application/json", "{\"success\":true}");
@@ -1210,6 +1225,9 @@ void handleSaveNTP() {
 void handleSyncNTP() {
   if (wifiConnected) {
     if (timeClient.update()) {
+      time_t epoch = timeClient.getEpochTime();
+      struct timeval tv = { .tv_sec = epoch, .tv_usec = 0 };
+      settimeofday(&tv, nullptr);
       server.send(200, "application/json", "{\"success\":true}");
     } else {
       server.send(400, "application/json", "{\"success\":false,\"error\":\"Failed to sync\"}");
