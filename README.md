@@ -41,7 +41,7 @@ GND _____ GND
 
 # Full Features
 ## 🔌 Relay Control System
-· 16 Independent Relay Channels - GPIO pin configurable
+· 8 Independent Relay Channels - GPIO pin configurable
 
 · Active LOW/HIGH Support - Configurable relay trigger logic
 
@@ -97,7 +97,7 @@ GND _____ GND
   · NTP server configuration
   · Timezone offsets
   · Last successful NTP sync timestamp
-  · All 16 relay configurations and schedules
+  · All 8 relay configurations and schedules
 
 ## 🌍 Web Interface
 · Responsive Design - Works on desktop, tablet, and mobile
@@ -169,7 +169,7 @@ Endpoint Method Purpose
 · Watchdog Friendly - Short delay() calls prevent resets
 
 ## 📊 Technical Specifications
-· 16 Relays with 4 schedules each = 64 total schedules
+· 8 Relays with 4 schedules each = 32 total schedules
 
 · EEPROM Storage: 2048 bytes
 
@@ -179,7 +179,7 @@ Endpoint Method Purpose
 
 · Default Timezone: Philippines GMT+8 (28800 seconds)
 
-· Default AP: ESP32_16CH_Smart_Switch / ESP32-admin
+· Default AP: ESP32_8CH_Smart_Switch / ESP32-admin
 
 ## 🎯 Use Cases
 · Home automation lighting control
