@@ -134,6 +134,7 @@ const char index_html[] PROGMEM = R"rawliteral(
     <div class="container">
         <div class="header">
             <h1>ESP32 11-Channel Relay Smart Switch</h1>
+            <p>Developed by: github.com/xiv3r</p>
             <div class="nav">
                 <a href="/">Relays Settings</a>
                 <a href="/wifi">WiFi Settings</a>
