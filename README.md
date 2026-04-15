@@ -33,8 +33,8 @@ IN3 _____ D25 GPIO
 IN4 _____ D26 GPIO
 IN5 _____ D27 GPIO
 IN6 _____ D14 GPIO
-IN7 _____ D16 GPIO
-IN8 _____ D17 GPIO
+IN7 _____ D12 GPIO
+IN8 _____ D13 GPIO
 GND _____ GND
 ```
 <img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/img/esp32_dashboard.jpg">
