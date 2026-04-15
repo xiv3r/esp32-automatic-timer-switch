@@ -1,35 +1,35 @@
-#include <WiFi.h>
+#include <WiFi.h>               // ESP32 WiFi library
 #include <NTPClient.h>
 #include <WiFiUdp.h>
-#include <WebServer.h>
+#include <WebServer.h>          // ESP32 WebServer
 #include <DNSServer.h>
 #include <EEPROM.h>
 #include <ArduinoJson.h>
 
-// EEPROM Configuration
+// ==================== EEPROM Configuration ====================
 #define EEPROM_SIZE 2048
 #define EEPROM_MAGIC 0x1234
 #define EEPROM_VERSION 1
 
-// DNS and Web Server
+// ==================== DNS and Web Server ====================
 DNSServer dnsServer;
-WebServer server(80);
+WebServer server(80);           // ESP32 uses WebServer
 const byte DNS_PORT = 53;
 
-// NTP Configuration
+// ==================== NTP Configuration ====================
 const char* ntpServer = "ph.pool.ntp.org";
-long gmtOffset_sec = 28800;  // Default: Philippines GMT+8:00
+long gmtOffset_sec = 28800;      // Philippines GMT+8:00
 int daylightOffset_sec = 0;
 
-// WiFi Station Configuration
+// ==================== WiFi Station ====================
 String sta_ssid = "";
 String sta_password = "";
 
-// NTP Client
+// ==================== NTP Client ====================
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, ntpServer, gmtOffset_sec, daylightOffset_sec);
 
-// Internal RTC variables
+// ==================== Internal RTC variables ====================
 unsigned long internalMillisAtLastNTPSync = 0;
 unsigned long lastRTCUpdate = 0;
 time_t internalEpoch = 0;
@@ -37,21 +37,21 @@ bool rtcInitialized = false;
 float driftCompensation = 1.0;
 const unsigned long RTC_UPDATE_INTERVAL = 100;
 
-// Relay Configuration
+// ==================== Relay Configuration ====================
 #define NUM_RELAYS 8
-// ESP32 GPIO pins (adjust according to your wiring)
-const int relayPins[NUM_RELAYS] = {32, 33, 25, 26, 27, 14, 12, 13};
-const bool relayActiveLow = true; // Set true for active LOW relays
+// ESP32 safe GPIOs (avoid input‑only 34–39 and strapping pins)
+const int relayPins[NUM_RELAYS] = {26, 27, 14, 12, 13, 15, 2, 4};
+const bool relayActiveLow = true; // true = active LOW relays
 
-// Timer Schedule Structure (now with 8 schedules per relay)
+// ==================== Timer Schedule Structure ====================
 struct TimerSchedule {
-  uint8_t startHour[8];
-  uint8_t startMinute[8];
-  uint8_t startSecond[8];
-  uint8_t stopHour[8];
-  uint8_t stopMinute[8];
-  uint8_t stopSecond[8];
-  bool enabled[8];
+  uint8_t startHour[4];
+  uint8_t startMinute[4];
+  uint8_t startSecond[4];
+  uint8_t stopHour[4];
+  uint8_t stopMinute[4];
+  uint8_t stopSecond[4];
+  bool enabled[4];
 };
 
 struct RelayConfig {
@@ -60,7 +60,7 @@ struct RelayConfig {
   bool manualState;
 } relayConfigs[NUM_RELAYS];
 
-// System Configuration
+// ==================== System Configuration ====================
 struct SystemConfig {
   uint16_t magic;
   uint8_t version;
@@ -77,21 +77,21 @@ struct SystemConfig {
 
 SystemConfig sysConfig;
 
-// AP Configuration variables (now loaded from EEPROM)
+// AP Configuration variables (loaded from EEPROM)
 char ap_ssid[32] = "ESP32_8CH_Timer_Switch";
 char ap_password[32] = "ESP32-admin";
 
 bool wifiConnected = false;
 unsigned long lastNTPSync = 0;
-const unsigned long NTP_SYNC_INTERVAL = 1000; // 1 seconds
+const unsigned long NTP_SYNC_INTERVAL = 1000; // 1 second
 
-// Function prototypes
+// ==================== Function Prototypes ====================
 time_t getCurrentEpoch();
 void syncInternalRTC();
 void loadRTCState();
 void saveRTCState();
 
-// HTML Pages (unchanged)
+// ==================== HTML Pages (UNCHANGED) ====================
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html>
@@ -190,8 +190,8 @@ const char index_html[] PROGMEM = R"rawliteral(
                     <button class="button" onclick="resetManual(${index})">Auto</button>
                 </div>`;
                 
-                // Schedules - now 8 schedules
-                for (let s = 0; s < 8; s++) {
+                // Schedules
+                for (let s = 0; s < 4; s++) {
                     const schedule = relay.schedules[s];
                     html += `<div class="schedule">
                         <h4>Schedule ${s + 1} 
@@ -720,7 +720,7 @@ const char ap_html[] PROGMEM = R"rawliteral(
 </html>
 )rawliteral";
 
-// RTC Functions (unchanged)
+// ==================== RTC Functions (UNCHANGED) ====================
 time_t getCurrentEpoch() {
     if (wifiConnected && timeClient.getEpochTime() > 100000) {
         return timeClient.getEpochTime();
@@ -771,7 +771,7 @@ void loadRTCState() {
 }
 
 void restartAP() {
-    WiFi.softAPdisconnect(true);
+    WiFi.softAPdisconnect();      // ESP32 signature (no argument)
     delay(500);
     if (strlen(sysConfig.ap_password) > 0) {
         WiFi.softAP(sysConfig.ap_ssid, sysConfig.ap_password);
@@ -783,10 +783,11 @@ void restartAP() {
     Serial.println(sysConfig.ap_ssid);
 }
 
+// ==================== Setup ====================
 void setup() {
     Serial.begin(115200);
     
-    // Initialize EEPROM (works on ESP32 with emulation)
+    // Initialize EEPROM
     EEPROM.begin(EEPROM_SIZE);
     
     // Initialize relay pins
@@ -795,9 +796,9 @@ void setup() {
         digitalWrite(relayPins[i], relayActiveLow ? HIGH : LOW);
     }
     
-    // Initialize relay configs with defaults (now 8 schedules)
+    // Initialize relay configs with defaults
     for (int i = 0; i < NUM_RELAYS; i++) {
-        for (int s = 0; s < 8; s++) {
+        for (int s = 0; s < 4; s++) {
             relayConfigs[i].schedule.enabled[s] = false;
         }
         relayConfigs[i].manualOverride = false;
@@ -851,6 +852,7 @@ void setup() {
     Serial.println("AP IP address: " + WiFi.softAPIP().toString());
 }
 
+// ==================== Loop ====================
 void loop() {
     dnsServer.processNextRequest();
     server.handleClient();
@@ -875,6 +877,7 @@ void loop() {
     delay(10);
 }
 
+// ==================== Web Server Setup ====================
 void setupWebServer() {
     // Main pages
     server.on("/", HTTP_GET, []() {
@@ -920,6 +923,7 @@ void setupWebServer() {
     server.begin();
 }
 
+// ==================== Relay Scheduling ====================
 void processRelaySchedules() {
     unsigned long currentEpoch = getCurrentEpoch();
     if (currentEpoch < 100000) return;
@@ -935,8 +939,7 @@ void processRelaySchedules() {
         
         bool shouldBeOn = false;
         
-        // Check all 8 schedules
-        for (int s = 0; s < 8; s++) {
+        for (int s = 0; s < 4; s++) {
             if (!relayConfigs[i].schedule.enabled[s]) continue;
             
             int startSeconds = relayConfigs[i].schedule.startHour[s] * 3600 + 
@@ -967,6 +970,7 @@ void processRelaySchedules() {
     }
 }
 
+// ==================== Configuration Management ====================
 void loadConfiguration() {
     EEPROM.get(0, sysConfig);
     
@@ -1017,9 +1021,9 @@ void saveConfiguration() {
     }
 }
 
-// API Handlers (unchanged except for minor type adjustments if needed)
+// ==================== API Handlers (UNCHANGED) ====================
 void handleGetRelays() {
-    DynamicJsonDocument doc(8192); // Increased size for 8 schedules
+    DynamicJsonDocument doc(4096);
     JsonArray array = doc.to<JsonArray>();
     
     for (int i = 0; i < NUM_RELAYS; i++) {
@@ -1027,7 +1031,7 @@ void handleGetRelays() {
         relay["state"] = digitalRead(relayPins[i]) == (relayActiveLow ? LOW : HIGH);
         
         JsonArray schedules = relay.createNestedArray("schedules");
-        for (int s = 0; s < 8; s++) {
+        for (int s = 0; s < 4; s++) {
             JsonObject schedule = schedules.createNestedObject();
             schedule["startHour"] = relayConfigs[i].schedule.startHour[s];
             schedule["startMinute"] = relayConfigs[i].schedule.startMinute[s];
@@ -1102,7 +1106,7 @@ void handleSaveRelay() {
         return;
     }
     
-    DynamicJsonDocument doc(4096); // Increased size for 8 schedules
+    DynamicJsonDocument doc(2048);
     DeserializationError error = deserializeJson(doc, server.arg("plain"));
     
     if (error) {
@@ -1113,8 +1117,8 @@ void handleSaveRelay() {
     int relay = doc["relay"];
     JsonArray schedules = doc["schedules"].as<JsonArray>();
     
-    if (relay >= 0 && relay < NUM_RELAYS && schedules.size() >= 8) {
-        for (int s = 0; s < 8; s++) {
+    if (relay >= 0 && relay < NUM_RELAYS && schedules.size() >= 4) {
+        for (int s = 0; s < 4; s++) {
             relayConfigs[relay].schedule.startHour[s] = schedules[s]["startHour"];
             relayConfigs[relay].schedule.startMinute[s] = schedules[s]["startMinute"];
             relayConfigs[relay].schedule.startSecond[s] = schedules[s]["startSecond"];
