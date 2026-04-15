@@ -5,18 +5,11 @@
 #include <DNSServer.h>
 #include <EEPROM.h>
 #include <ArduinoJson.h>
-#include <sys/time.h>   // Added for settimeofday()
-#include <time.h>       // Added for time() and localtime()
-#include <stdint.h>     // For explicit integer types
 
 // EEPROM Configuration
 #define EEPROM_SIZE 2048
 #define EEPROM_MAGIC 0x1234
-#define EEPROM_VERSION 2    // Incremented for new time storage field
-
-// WiFi AP Configuration - Changed from const to variables
-char ap_ssid[32] = "ESP32_8CH_Smart_Switch";
-char ap_password[64] = "ESP32-admin";
+#define EEPROM_VERSION 1
 
 // DNS and Web Server
 DNSServer dnsServer;
@@ -36,20 +29,29 @@ String sta_password = "";
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, ntpServer, gmtOffset_sec, daylightOffset_sec);
 
+// Internal RTC variables
+unsigned long internalMillisAtLastNTPSync = 0;
+unsigned long lastRTCUpdate = 0;
+time_t internalEpoch = 0;
+bool rtcInitialized = false;
+float driftCompensation = 1.0;
+const unsigned long RTC_UPDATE_INTERVAL = 100;
+
 // Relay Configuration
 #define NUM_RELAYS 8
-const int relayPins[NUM_RELAYS] = {32, 33, 25, 26, 27, 14, 16, 17}; // Adjust pins as needed
+// ESP32 GPIO pins (adjust according to your wiring)
+const int relayPins[NUM_RELAYS] = {32, 33, 25, 26, 27, 14, 12, 13};
 const bool relayActiveLow = true; // Set true for active LOW relays
 
-// Timer Schedule Structure
+// Timer Schedule Structure (now with 8 schedules per relay)
 struct TimerSchedule {
-  uint8_t startHour[4];
-  uint8_t startMinute[4];
-  uint8_t startSecond[4];
-  uint8_t stopHour[4];
-  uint8_t stopMinute[4];
-  uint8_t stopSecond[4];
-  bool enabled[4];
+  uint8_t startHour[8];
+  uint8_t startMinute[8];
+  uint8_t startSecond[8];
+  uint8_t stopHour[8];
+  uint8_t stopMinute[8];
+  uint8_t stopSecond[8];
+  bool enabled[8];
 };
 
 struct RelayConfig {
@@ -58,31 +60,43 @@ struct RelayConfig {
   bool manualState;
 } relayConfigs[NUM_RELAYS];
 
-// System Configuration - Extended to include AP settings and RTC persistence
+// System Configuration
 struct SystemConfig {
   uint16_t magic;
   uint8_t version;
   char sta_ssid[32];
   char sta_password[64];
   char ap_ssid[32];
-  char ap_password[64];
+  char ap_password[32];
   char ntp_server[48];
   long gmt_offset;
   int daylight_offset;
-  time_t last_ntp_sync_epoch;   // NEW: Last successful NTP epoch saved to EEPROM
+  time_t last_rtc_epoch;
+  float rtc_drift;
 };
 
 SystemConfig sysConfig;
+
+// AP Configuration variables (now loaded from EEPROM)
+char ap_ssid[32] = "ESP32_8CH_Timer_Switch";
+char ap_password[32] = "ESP32-admin";
+
 bool wifiConnected = false;
 unsigned long lastNTPSync = 0;
-const unsigned long NTP_SYNC_INTERVAL = 1000; // 1 ms
+const unsigned long NTP_SYNC_INTERVAL = 1000; // 1 seconds
+
+// Function prototypes
+time_t getCurrentEpoch();
+void syncInternalRTC();
+void loadRTCState();
+void saveRTCState();
 
 // HTML Pages (unchanged)
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html>
 <head>
-    <title>ESP32 8-Channel Relay Timer</title>
+    <title>ESP32 8-Channel Relay Smart Switch</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body { font-family: Arial; margin: 10px; background: #f0f0f0; }
@@ -112,12 +126,12 @@ const char index_html[] PROGMEM = R"rawliteral(
 <body>
     <div class="container">
         <div class="header">
-            <h1>ESP32 8-Channel Relay Timer Switch</h1>
+            <h1>ESP32 8-Channel Relay Smart Switch</h1>
             <div class="nav">
-                <a href="/">Relay Settings</a>
+                <a href="/">Relays Settings</a>
                 <a href="/wifi">WiFi Settings</a>
+                <a href="/ntp">Time Settings</a>
                 <a href="/ap">AP Settings</a>
-                <a href="/ntp">NTP/RTC Settings</a>
                 <span style="float: right;" id="currentTime">--:--:--</span>
             </div>
         </div>
@@ -176,8 +190,8 @@ const char index_html[] PROGMEM = R"rawliteral(
                     <button class="button" onclick="resetManual(${index})">Auto</button>
                 </div>`;
                 
-                // Schedules
-                for (let s = 0; s < 4; s++) {
+                // Schedules - now 8 schedules
+                for (let s = 0; s < 8; s++) {
                     const schedule = relay.schedules[s];
                     html += `<div class="schedule">
                         <h4>Schedule ${s + 1} 
@@ -368,10 +382,10 @@ const char wifi_html[] PROGMEM = R"rawliteral(
         <div class="header">
             <h1>WiFi Station Settings</h1>
             <div class="nav">
-                <a href="/">Relay Settings</a>
+                <a href="/">Relays Settings</a>
                 <a href="/wifi">WiFi Settings</a>
+                <a href="/ntp">Time Settings</a>
                 <a href="/ap">AP Settings</a>
-                <a href="/ntp">NTP/RTC Settings</a>
             </div>
         </div>
         
@@ -449,132 +463,11 @@ const char wifi_html[] PROGMEM = R"rawliteral(
 </html>
 )rawliteral";
 
-const char ap_html[] PROGMEM = R"rawliteral(
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Access Point Settings</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        body { font-family: Arial; margin: 10px; background: #f0f0f0; }
-        .container { max-width: 600px; margin: 0 auto; }
-        .header { background: #2196F3; color: white; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
-        .card { background: white; padding: 20px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; color: #666; }
-        input[type="text"], input[type="password"] { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 3px; box-sizing: border-box; }
-        .button { background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer; }
-        .nav { margin-bottom: 20px; }
-        .nav a { color: white; text-decoration: none; margin-right: 15px; }
-        .notification { position: fixed; top: 20px; right: 20px; padding: 15px; border-radius: 5px; color: white; display: none; }
-        .notification.success { background: #4CAF50; }
-        .notification.error { background: #f44336; }
-        .info { background: #e3f2fd; padding: 15px; border-radius: 3px; margin-bottom: 20px; color: #1976D2; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Access Point Settings</h1>
-            <div class="nav">
-                <a href="/">Relay Settings</a>
-                <a href="/wifi">WiFi Settings</a>
-                <a href="/ap">AP Settings</a>
-                <a href="/ntp">NTP/RTC Settings</a>
-            </div>
-        </div>
-        
-        <div class="card">
-            <div class="info">
-                <strong>Note:</strong> Changing AP settings will restart the device. 
-                You'll need to reconnect using the new credentials.
-            </div>
-            <form onsubmit="saveAP(event)">
-                <div class="form-group">
-                    <label>AP SSID:</label>
-                    <input type="text" id="ap_ssid" required minlength="1" maxlength="31">
-                </div>
-                <div class="form-group">
-                    <label>AP Password:</label>
-                    <input type="password" id="ap_password" minlength="8" maxlength="63">
-                    <small style="color: #666;">Minimum 8 characters, leave blank for open network</small>
-                </div>
-                <button type="submit" class="button">Save AP Settings</button>
-            </form>
-        </div>
-    </div>
-    
-    <div id="notification" class="notification"></div>
-    
-    <script>
-        function showNotification(message, isSuccess = true) {
-            const notification = document.getElementById('notification');
-            notification.textContent = message;
-            notification.className = 'notification ' + (isSuccess ? 'success' : 'error');
-            notification.style.display = 'block';
-            setTimeout(() => {
-                notification.style.display = 'none';
-            }, 3000);
-        }
-        
-        function loadAP() {
-            fetch('/api/ap')
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('ap_ssid').value = data.ap_ssid || 'ESP32_8CH_Smart_Switch';
-                })
-                .catch(error => {
-                    console.error('Error loading AP settings:', error);
-                });
-        }
-        
-        function saveAP(event) {
-            event.preventDefault();
-            const password = document.getElementById('ap_password').value;
-            
-            if (password && password.length < 8) {
-                showNotification('Password must be at least 8 characters', false);
-                return;
-            }
-            
-            const data = {
-                ap_ssid: document.getElementById('ap_ssid').value,
-                ap_password: password
-            };
-            
-            fetch('/api/ap', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(data)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showNotification('AP settings saved! Device will restart...');
-                    setTimeout(() => {
-                        window.location.href = '/';
-                    }, 3000);
-                } else {
-                    showNotification(data.error || 'Failed to save AP settings', false);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showNotification('Error saving AP settings', false);
-            });
-        }
-        
-        loadAP();
-    </script>
-</body>
-</html>
-)rawliteral";
-
 const char ntp_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html>
 <head>
-    <title>NTP & RTC Settings</title>
+    <title>Time Settings</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body { font-family: Arial; margin: 10px; background: #f0f0f0; }
@@ -595,12 +488,12 @@ const char ntp_html[] PROGMEM = R"rawliteral(
 <body>
     <div class="container">
         <div class="header">
-            <h1>NTP & RTC Settings</h1>
+            <h1>Time Settings</h1>
             <div class="nav">
-                <a href="/">Relay Settings</a>
+                <a href="/">Relays Settings</a>
                 <a href="/wifi">WiFi Settings</a>
+                <a href="/ntp">Time Settings</a>
                 <a href="/ap">AP Settings</a>
-                <a href="/ntp">NTP/RTC Settings</a>
             </div>
         </div>
         
@@ -608,11 +501,11 @@ const char ntp_html[] PROGMEM = R"rawliteral(
             <form onsubmit="saveNTP(event)">
                 <div class="form-group">
                     <label>NTP Server:</label>
-                    <input type="text" id="ntpServer" value="pool.ntp.org" required>
+                    <input type="text" id="ntpServer" value="ph.pool.ntp.org" required>
                 </div>
                 <div class="form-group">
                     <label>GMT Offset (seconds):</label>
-                    <input type="number" id="gmtOffset" required>
+                    <input type="number" id="gmtOffset" value="28800" required>
                 </div>
                 <div class="form-group">
                     <label>Daylight Offset (seconds):</label>
@@ -641,8 +534,8 @@ const char ntp_html[] PROGMEM = R"rawliteral(
             fetch('/api/ntp')
                 .then(response => response.json())
                 .then(data => {
-                    document.getElementById('ntpServer').value = data.ntpServer || 'pool.ntp.org';
-                    document.getElementById('gmtOffset').value = data.gmtOffset || 19800;
+                    document.getElementById('ntpServer').value = data.ntpServer || 'ph.pool.ntp.org';
+                    document.getElementById('gmtOffset').value = data.gmtOffset || 28800;
                     document.getElementById('daylightOffset').value = data.daylightOffset || 0;
                 })
                 .catch(error => {
@@ -707,562 +600,705 @@ const char ntp_html[] PROGMEM = R"rawliteral(
 </html>
 )rawliteral";
 
-// Function declarations
-void handleGetRelays();
-void handleManualControl();
-void handleResetManual();
-void handleSaveRelay();
-void handleGetTime();
-void handleGetWiFi();
-void handleSaveWiFi();
-void handleGetAP();
-void handleSaveAP();
-void handleGetNTP();
-void handleSaveNTP();
-void handleSyncNTP();
+const char ap_html[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AP Settings</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: Arial; margin: 10px; background: #f0f0f0; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .header { background: #2196F3; color: white; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .card { background: white; padding: 20px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; color: #666; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 3px; box-sizing: border-box; }
+        .button { background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer; }
+        .nav { margin-bottom: 20px; }
+        .nav a { color: white; text-decoration: none; margin-right: 15px; }
+        .notification { position: fixed; top: 20px; right: 20px; padding: 15px; border-radius: 5px; color: white; display: none; }
+        .notification.success { background: #4CAF50; }
+        .notification.error { background: #f44336; }
+        .note { background: #fff3cd; border: 1px solid #ffeaa7; padding: 10px; border-radius: 3px; margin-bottom: 15px; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Access Point Settings</h1>
+            <div class="nav">
+                <a href="/">Relays Settings</a>
+                <a href="/wifi">WiFi Settings</a>
+                <a href="/ntp">Time Settings</a>
+                <a href="/ap">AP Settings</a>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="note">
+                <strong>Note:</strong> Changing AP settings will disconnect all currently connected devices. 
+                You will need to reconnect to the new AP SSID after saving.
+            </div>
+            <form onsubmit="saveAP(event)">
+                <div class="form-group">
+                    <label>AP SSID (Network Name):</label>
+                    <input type="text" id="ap_ssid" maxlength="31" required>
+                </div>
+                <div class="form-group">
+                    <label>AP Password (min 8 characters or leave blank for open network):</label>
+                    <input type="password" id="ap_password" minlength="8">
+                </div>
+                <button type="submit" class="button">Save AP Settings</button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="notification" class="notification"></div>
+    
+    <script>
+        function showNotification(message, isSuccess = true) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = 'notification ' + (isSuccess ? 'success' : 'error');
+            notification.style.display = 'block';
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+        
+        function loadAP() {
+            fetch('/api/ap')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('ap_ssid').value = data.ap_ssid || 'ESP32_8CH_Timer_Switch';
+                    document.getElementById('ap_password').value = data.ap_password || '';
+                })
+                .catch(error => {
+                    console.error('Error loading AP settings:', error);
+                });
+        }
+        
+        function saveAP(event) {
+            event.preventDefault();
+            const password = document.getElementById('ap_password').value;
+            if (password.length > 0 && password.length < 8) {
+                showNotification('Password must be at least 8 characters or blank', false);
+                return;
+            }
+            
+            const data = {
+                ap_ssid: document.getElementById('ap_ssid').value,
+                ap_password: password
+            };
+            
+            fetch('/api/ap', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('AP settings saved! AP will restart. Reconnect to the new network.');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 3000);
+                } else {
+                    showNotification('Failed to save AP settings', false);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Error saving AP settings', false);
+            });
+        }
+        
+        loadAP();
+    </script>
+</body>
+</html>
+)rawliteral";
+
+// RTC Functions (unchanged)
+time_t getCurrentEpoch() {
+    if (wifiConnected && timeClient.getEpochTime() > 100000) {
+        return timeClient.getEpochTime();
+    } else if (rtcInitialized) {
+        unsigned long millisSinceSync = millis() - internalMillisAtLastNTPSync;
+        time_t rtcEpoch = internalEpoch + (millisSinceSync / 1000);
+        return rtcEpoch;
+    }
+    return 0;
+}
+
+void syncInternalRTC() {
+    if (wifiConnected && timeClient.getEpochTime() > 100000) {
+        time_t ntpEpoch = timeClient.getEpochTime();
+        
+        if (rtcInitialized) {
+            unsigned long elapsedMillis = millis() - internalMillisAtLastNTPSync;
+            if (elapsedMillis > 60000) {
+                float newDrift = (float)(ntpEpoch - internalEpoch) / (float)(elapsedMillis / 1000);
+                driftCompensation = driftCompensation * 0.9 + newDrift * 0.1;
+            }
+        }
+        
+        internalEpoch = ntpEpoch;
+        internalMillisAtLastNTPSync = millis();
+        rtcInitialized = true;
+        saveRTCState();
+        
+        Serial.printf("Internal RTC synced: %lu, Drift: %.6f\n", internalEpoch, driftCompensation);
+    }
+}
+
+void saveRTCState() {
+    sysConfig.last_rtc_epoch = internalEpoch;
+    sysConfig.rtc_drift = driftCompensation;
+    EEPROM.put(0, sysConfig);
+    EEPROM.commit();
+}
+
+void loadRTCState() {
+    if (sysConfig.last_rtc_epoch > 100000) {
+        internalEpoch = sysConfig.last_rtc_epoch;
+        driftCompensation = sysConfig.rtc_drift;
+        internalMillisAtLastNTPSync = millis();
+        rtcInitialized = true;
+        Serial.printf("RTC state loaded from EEPROM: %lu\n", internalEpoch);
+    }
+}
+
+void restartAP() {
+    WiFi.softAPdisconnect(true);
+    delay(500);
+    if (strlen(sysConfig.ap_password) > 0) {
+        WiFi.softAP(sysConfig.ap_ssid, sysConfig.ap_password);
+    } else {
+        WiFi.softAP(sysConfig.ap_ssid);
+    }
+    Serial.println("AP restarted with new settings");
+    Serial.print("AP SSID: ");
+    Serial.println(sysConfig.ap_ssid);
+}
 
 void setup() {
-  Serial.begin(115200);
-  
-  // Initialize EEPROM
-  if (!EEPROM.begin(EEPROM_SIZE)) {
-    Serial.println("Failed to initialize EEPROM");
-  }
-  
-  // Initialize relay pins
-  for (int i = 0; i < NUM_RELAYS; i++) {
-    pinMode(relayPins[i], OUTPUT);
-    digitalWrite(relayPins[i], relayActiveLow ? HIGH : LOW);
-  }
-  
-  // Initialize relay configs with defaults
-  for (int i = 0; i < NUM_RELAYS; i++) {
-    for (int s = 0; s < 4; s++) {
-      relayConfigs[i].schedule.enabled[s] = false;
-    }
-    relayConfigs[i].manualOverride = false;
-    relayConfigs[i].manualState = false;
-  }
-  
-  // Load configuration
-  loadConfiguration();
-  
-  // Setup WiFi
-  if (strlen(sysConfig.sta_ssid) > 0) {
-    WiFi.begin(sysConfig.sta_ssid, sysConfig.sta_password);
-    int attempts = 0;
-    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-      delay(500);
-      Serial.print(".");
-      attempts++;
+    Serial.begin(115200);
+    
+    // Initialize EEPROM (works on ESP32 with emulation)
+    EEPROM.begin(EEPROM_SIZE);
+    
+    // Initialize relay pins
+    for (int i = 0; i < NUM_RELAYS; i++) {
+        pinMode(relayPins[i], OUTPUT);
+        digitalWrite(relayPins[i], relayActiveLow ? HIGH : LOW);
     }
     
-    if (WiFi.status() == WL_CONNECTED) {
-      wifiConnected = true;
-      Serial.println("\nConnected to WiFi");
-      Serial.println(WiFi.localIP());
-      
-      // Initialize NTP and set system time
-      timeClient.setPoolServerName(sysConfig.ntp_server);
-      timeClient.setTimeOffset(sysConfig.gmt_offset);
-      timeClient.begin();
-      if (timeClient.update()) {
-        time_t epoch = timeClient.getEpochTime();
-        struct timeval tv = { .tv_sec = epoch, .tv_usec = 0 };
-        settimeofday(&tv, nullptr);
-        // Save this epoch to EEPROM for future cold boots
-        sysConfig.last_ntp_sync_epoch = epoch;
-        saveConfiguration();
-        Serial.println("System time set from NTP and saved to EEPROM");
-      }
+    // Initialize relay configs with defaults (now 8 schedules)
+    for (int i = 0; i < NUM_RELAYS; i++) {
+        for (int s = 0; s < 8; s++) {
+            relayConfigs[i].schedule.enabled[s] = false;
+        }
+        relayConfigs[i].manualOverride = false;
+        relayConfigs[i].manualState = false;
     }
-  }
-  
-  // If WiFi failed and we have a saved epoch, restore it as fallback
-  if (!wifiConnected && sysConfig.last_ntp_sync_epoch > 1609459200) { // after 2021
-    struct timeval tv = { .tv_sec = sysConfig.last_ntp_sync_epoch, .tv_usec = 0 };
-    settimeofday(&tv, nullptr);
-    Serial.println("Restored time from EEPROM (last NTP sync)");
-  }
-  
-  // Always start AP mode for configuration
-  WiFi.mode(WIFI_AP_STA);
-  WiFi.softAP(ap_ssid, ap_password);
-  
-  // Setup DNS server for captive portal
-  dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
-  
-  // Setup web server routes
-  setupWebServer();
-  
-  Serial.println("AP IP address: " + WiFi.softAPIP().toString());
+    
+    // Load configuration
+    loadConfiguration();
+    loadRTCState();
+    
+    // Setup WiFi
+    if (strlen(sysConfig.sta_ssid) > 0) {
+        WiFi.begin(sysConfig.sta_ssid, sysConfig.sta_password);
+        int attempts = 0;
+        while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+            delay(500);
+            Serial.print(".");
+            attempts++;
+        }
+        
+        if (WiFi.status() == WL_CONNECTED) {
+            wifiConnected = true;
+            Serial.println("\nConnected to WiFi");
+            Serial.println(WiFi.localIP());
+            
+            // Initialize NTP
+            timeClient.setPoolServerName(sysConfig.ntp_server);
+            timeClient.setTimeOffset(sysConfig.gmt_offset);
+            timeClient.begin();
+            if (timeClient.update()) {
+                Serial.println("NTP time synchronized");
+                syncInternalRTC();
+            }
+        }
+    }
+    
+    // Always start AP mode for configuration
+    WiFi.mode(WIFI_AP_STA);
+    if (strlen(sysConfig.ap_password) > 0) {
+        WiFi.softAP(sysConfig.ap_ssid, sysConfig.ap_password);
+    } else {
+        WiFi.softAP(sysConfig.ap_ssid);
+    }
+    
+    // Setup DNS server for captive portal
+    dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
+    
+    // Setup web server routes
+    setupWebServer();
+    
+    Serial.println("AP IP address: " + WiFi.softAPIP().toString());
 }
 
 void loop() {
-  dnsServer.processNextRequest();
-  server.handleClient();
-  
-  // Update NTP and set system time
-  if (wifiConnected && millis() - lastNTPSync > NTP_SYNC_INTERVAL) {
-    if (timeClient.update()) {
-      lastNTPSync = millis();
-      time_t epoch = timeClient.getEpochTime();
-      struct timeval tv = { .tv_sec = epoch, .tv_usec = 0 };
-      settimeofday(&tv, nullptr);
-      // Persist the new time to EEPROM
-      sysConfig.last_ntp_sync_epoch = epoch;
-      saveConfiguration();
-      Serial.println("System time updated from NTP and saved to EEPROM");
+    dnsServer.processNextRequest();
+    server.handleClient();
+    
+    // Update NTP time
+    if (wifiConnected && millis() - lastNTPSync > NTP_SYNC_INTERVAL) {
+        if (timeClient.update()) {
+            lastNTPSync = millis();
+            syncInternalRTC();
+            Serial.println("NTP time synchronized with internal RTC");
+        }
     }
-  }
-  
-  // Process relay schedules
-  processRelaySchedules();
-  
-  delay(10);
+    
+    // Update internal RTC periodically
+    if (millis() - lastRTCUpdate > RTC_UPDATE_INTERVAL) {
+        lastRTCUpdate = millis();
+    }
+    
+    // Process relay schedules
+    processRelaySchedules();
+    
+    delay(10);
 }
 
 void setupWebServer() {
-  // Main pages
-  server.on("/", HTTP_GET, []() {
-    server.send_P(200, "text/html", index_html);
-  });
-  
-  server.on("/wifi", HTTP_GET, []() {
-    server.send_P(200, "text/html", wifi_html);
-  });
-  
-  server.on("/ap", HTTP_GET, []() {
-    server.send_P(200, "text/html", ap_html);
-  });
-  
-  server.on("/ntp", HTTP_GET, []() {
-    server.send_P(200, "text/html", ntp_html);
-  });
-  
-  // API endpoints
-  server.on("/api/relays", HTTP_GET, handleGetRelays);
-  server.on("/api/relay/manual", HTTP_POST, handleManualControl);
-  server.on("/api/relay/reset", HTTP_POST, handleResetManual);
-  server.on("/api/relay/save", HTTP_POST, handleSaveRelay);
-  server.on("/api/time", HTTP_GET, handleGetTime);
-  server.on("/api/wifi", HTTP_GET, handleGetWiFi);
-  server.on("/api/wifi", HTTP_POST, handleSaveWiFi);
-  server.on("/api/ap", HTTP_GET, handleGetAP);
-  server.on("/api/ap", HTTP_POST, handleSaveAP);
-  server.on("/api/ntp", HTTP_GET, handleGetNTP);
-  server.on("/api/ntp", HTTP_POST, handleSaveNTP);
-  server.on("/api/ntp/sync", HTTP_POST, handleSyncNTP);
-  
-  // Captive portal redirect
-  server.onNotFound([]() {
-    if (server.hostHeader() != WiFi.softAPIP().toString()) {
-      server.sendHeader("Location", "http://" + WiFi.softAPIP().toString() + "/", true);
-      server.send(302, "text/plain", "");
-    } else {
-      server.send(404, "text/plain", "Not Found");
-    }
-  });
-  
-  server.begin();
+    // Main pages
+    server.on("/", HTTP_GET, []() {
+        server.send_P(200, "text/html", index_html);
+    });
+    
+    server.on("/wifi", HTTP_GET, []() {
+        server.send_P(200, "text/html", wifi_html);
+    });
+    
+    server.on("/ntp", HTTP_GET, []() {
+        server.send_P(200, "text/html", ntp_html);
+    });
+    
+    server.on("/ap", HTTP_GET, []() {
+        server.send_P(200, "text/html", ap_html);
+    });
+    
+    // API endpoints
+    server.on("/api/relays", HTTP_GET, handleGetRelays);
+    server.on("/api/relay/manual", HTTP_POST, handleManualControl);
+    server.on("/api/relay/reset", HTTP_POST, handleResetManual);
+    server.on("/api/relay/save", HTTP_POST, handleSaveRelay);
+    server.on("/api/time", HTTP_GET, handleGetTime);
+    server.on("/api/wifi", HTTP_GET, handleGetWiFi);
+    server.on("/api/wifi", HTTP_POST, handleSaveWiFi);
+    server.on("/api/ntp", HTTP_GET, handleGetNTP);
+    server.on("/api/ntp", HTTP_POST, handleSaveNTP);
+    server.on("/api/ntp/sync", HTTP_POST, handleSyncNTP);
+    server.on("/api/ap", HTTP_GET, handleGetAP);
+    server.on("/api/ap", HTTP_POST, handleSaveAP);
+    
+    // Captive portal redirect
+    server.onNotFound([]() {
+        if (server.hostHeader() != WiFi.softAPIP().toString()) {
+            server.sendHeader("Location", "http://" + WiFi.softAPIP().toString() + "/", true);
+            server.send(302, "text/plain", "");
+        } else {
+            server.send(404, "text/plain", "Not Found");
+        }
+    });
+    
+    server.begin();
 }
 
 void processRelaySchedules() {
-  // Use system time instead of NTP client
-  time_t now;
-  time(&now);
-  if (now < 1609459200) return; // Invalid time (before 2021-01-01)
-
-  struct tm *timeinfo = localtime(&now);
-  
-  for (int i = 0; i < NUM_RELAYS; i++) {
-    if (relayConfigs[i].manualOverride) {
-      digitalWrite(relayPins[i], 
-        relayActiveLow ? !relayConfigs[i].manualState : relayConfigs[i].manualState);
-      continue;
-    }
+    unsigned long currentEpoch = getCurrentEpoch();
+    if (currentEpoch < 100000) return;
     
-    bool shouldBeOn = false;
+    struct tm *timeinfo = localtime((time_t*)&currentEpoch);
     
-    for (int s = 0; s < 4; s++) {
-      if (!relayConfigs[i].schedule.enabled[s]) continue;
-      
-      int startSeconds = relayConfigs[i].schedule.startHour[s] * 3600 + 
-                         relayConfigs[i].schedule.startMinute[s] * 60 + 
-                         relayConfigs[i].schedule.startSecond[s];
-      int stopSeconds = relayConfigs[i].schedule.stopHour[s] * 3600 + 
-                        relayConfigs[i].schedule.stopMinute[s] * 60 + 
-                        relayConfigs[i].schedule.stopSecond[s];
-      int currentSeconds = timeinfo->tm_hour * 3600 + 
-                           timeinfo->tm_min * 60 + 
-                           timeinfo->tm_sec;
-      
-      if (startSeconds < stopSeconds) {
-        if (currentSeconds >= startSeconds && currentSeconds < stopSeconds) {
-          shouldBeOn = true;
-          break;
+    for (int i = 0; i < NUM_RELAYS; i++) {
+        if (relayConfigs[i].manualOverride) {
+            digitalWrite(relayPins[i], 
+                relayActiveLow ? !relayConfigs[i].manualState : relayConfigs[i].manualState);
+            continue;
         }
-      } else {
-        // Overnight schedule
-        if (currentSeconds >= startSeconds || currentSeconds < stopSeconds) {
-          shouldBeOn = true;
-          break;
+        
+        bool shouldBeOn = false;
+        
+        // Check all 8 schedules
+        for (int s = 0; s < 8; s++) {
+            if (!relayConfigs[i].schedule.enabled[s]) continue;
+            
+            int startSeconds = relayConfigs[i].schedule.startHour[s] * 3600 + 
+                             relayConfigs[i].schedule.startMinute[s] * 60 + 
+                             relayConfigs[i].schedule.startSecond[s];
+            int stopSeconds = relayConfigs[i].schedule.stopHour[s] * 3600 + 
+                            relayConfigs[i].schedule.stopMinute[s] * 60 + 
+                            relayConfigs[i].schedule.stopSecond[s];
+            int currentSeconds = timeinfo->tm_hour * 3600 + 
+                               timeinfo->tm_min * 60 + 
+                               timeinfo->tm_sec;
+            
+            if (startSeconds < stopSeconds) {
+                if (currentSeconds >= startSeconds && currentSeconds < stopSeconds) {
+                    shouldBeOn = true;
+                    break;
+                }
+            } else {
+                // Overnight schedule
+                if (currentSeconds >= startSeconds || currentSeconds < stopSeconds) {
+                    shouldBeOn = true;
+                    break;
+                }
+            }
         }
-      }
+        
+        digitalWrite(relayPins[i], relayActiveLow ? !shouldBeOn : shouldBeOn);
     }
-    
-    digitalWrite(relayPins[i], relayActiveLow ? !shouldBeOn : shouldBeOn);
-  }
 }
 
 void loadConfiguration() {
-  EEPROM.get(0, sysConfig);
-  
-  // Check for valid configuration
-  if (sysConfig.magic != EEPROM_MAGIC) {
-    Serial.println("No valid config found – initializing defaults");
-    sysConfig.magic = EEPROM_MAGIC;
-    sysConfig.version = EEPROM_VERSION;
-    strcpy(sysConfig.sta_ssid, "");
-    strcpy(sysConfig.sta_password, "");
-    strcpy(sysConfig.ap_ssid, "ESP32_8CH_Smart_Switch");
-    strcpy(sysConfig.ap_password, "ESP32-admin");
-    strcpy(sysConfig.ntp_server, "ph.pool.ntp.org");
-    sysConfig.gmt_offset = 28800;
-    sysConfig.daylight_offset = 0;
-    sysConfig.last_ntp_sync_epoch = 0;  // NEW: Initialize new field
-    saveConfiguration();
-  }
-  // Handle version migration (from version 1 to 2)
-  else if (sysConfig.version == 1) {
-    Serial.println("Migrating configuration from version 1 to 2");
-    sysConfig.version = EEPROM_VERSION;
-    sysConfig.last_ntp_sync_epoch = 0;  // Initialize new field
-    saveConfiguration();
-  }
-  
-  // Copy AP settings from config to variables
-  strcpy(ap_ssid, sysConfig.ap_ssid);
-  strcpy(ap_password, sysConfig.ap_password);
-  
-  // Load relay configurations
-  int addr = sizeof(SystemConfig);
-  for (int i = 0; i < NUM_RELAYS; i++) {
-    EEPROM.get(addr, relayConfigs[i]);
-    addr += sizeof(RelayConfig);
-  }
-  
-  Serial.println("Configuration loaded");
-  Serial.printf("Last NTP sync epoch: %lu\n", sysConfig.last_ntp_sync_epoch);
+    EEPROM.get(0, sysConfig);
+    
+    if (sysConfig.magic != EEPROM_MAGIC || sysConfig.version != EEPROM_VERSION) {
+        // Initialize with defaults
+        Serial.println("Initializing default configuration");
+        sysConfig.magic = EEPROM_MAGIC;
+        sysConfig.version = EEPROM_VERSION;
+        strcpy(sysConfig.sta_ssid, "");
+        strcpy(sysConfig.sta_password, "");
+        strcpy(sysConfig.ap_ssid, "ESP32_8CH_Timer_Switch");
+        strcpy(sysConfig.ap_password, "ESP32-admin");
+        strcpy(sysConfig.ntp_server, "ph.pool.ntp.org");
+        sysConfig.gmt_offset = 28800;
+        sysConfig.daylight_offset = 0;
+        sysConfig.last_rtc_epoch = 0;
+        sysConfig.rtc_drift = 1.0;
+        saveConfiguration();
+    }
+    
+    // Copy AP settings to global variables
+    strcpy(ap_ssid, sysConfig.ap_ssid);
+    strcpy(ap_password, sysConfig.ap_password);
+    
+    // Load relay configurations
+    int addr = sizeof(SystemConfig);
+    for (int i = 0; i < NUM_RELAYS; i++) {
+        EEPROM.get(addr, relayConfigs[i]);
+        addr += sizeof(RelayConfig);
+    }
+    
+    Serial.println("Configuration loaded");
 }
 
 void saveConfiguration() {
-  EEPROM.put(0, sysConfig);
-  
-  int addr = sizeof(SystemConfig);
-  for (int i = 0; i < NUM_RELAYS; i++) {
-    EEPROM.put(addr, relayConfigs[i]);
-    addr += sizeof(RelayConfig);
-  }
-  
-  if (EEPROM.commit()) {
-    Serial.println("Configuration saved successfully");
-  } else {
-    Serial.println("ERROR: Failed to save configuration");
-  }
+    EEPROM.put(0, sysConfig);
+    
+    int addr = sizeof(SystemConfig);
+    for (int i = 0; i < NUM_RELAYS; i++) {
+        EEPROM.put(addr, relayConfigs[i]);
+        addr += sizeof(RelayConfig);
+    }
+    
+    if (EEPROM.commit()) {
+        Serial.println("Configuration saved successfully");
+    } else {
+        Serial.println("ERROR: Failed to save configuration");
+    }
 }
 
-// API Handlers (unchanged except handleSyncNTP now also saves epoch)
+// API Handlers (unchanged except for minor type adjustments if needed)
 void handleGetRelays() {
-  DynamicJsonDocument doc(4096);
-  JsonArray array = doc.to<JsonArray>();
-  
-  for (int i = 0; i < NUM_RELAYS; i++) {
-    JsonObject relay = array.createNestedObject();
-    relay["state"] = digitalRead(relayPins[i]) == (relayActiveLow ? LOW : HIGH);
+    DynamicJsonDocument doc(8192); // Increased size for 8 schedules
+    JsonArray array = doc.to<JsonArray>();
     
-    JsonArray schedules = relay.createNestedArray("schedules");
-    for (int s = 0; s < 4; s++) {
-      JsonObject schedule = schedules.createNestedObject();
-      schedule["startHour"] = relayConfigs[i].schedule.startHour[s];
-      schedule["startMinute"] = relayConfigs[i].schedule.startMinute[s];
-      schedule["startSecond"] = relayConfigs[i].schedule.startSecond[s];
-      schedule["stopHour"] = relayConfigs[i].schedule.stopHour[s];
-      schedule["stopMinute"] = relayConfigs[i].schedule.stopMinute[s];
-      schedule["stopSecond"] = relayConfigs[i].schedule.stopSecond[s];
-      schedule["enabled"] = relayConfigs[i].schedule.enabled[s];
+    for (int i = 0; i < NUM_RELAYS; i++) {
+        JsonObject relay = array.createNestedObject();
+        relay["state"] = digitalRead(relayPins[i]) == (relayActiveLow ? LOW : HIGH);
+        
+        JsonArray schedules = relay.createNestedArray("schedules");
+        for (int s = 0; s < 8; s++) {
+            JsonObject schedule = schedules.createNestedObject();
+            schedule["startHour"] = relayConfigs[i].schedule.startHour[s];
+            schedule["startMinute"] = relayConfigs[i].schedule.startMinute[s];
+            schedule["startSecond"] = relayConfigs[i].schedule.startSecond[s];
+            schedule["stopHour"] = relayConfigs[i].schedule.stopHour[s];
+            schedule["stopMinute"] = relayConfigs[i].schedule.stopMinute[s];
+            schedule["stopSecond"] = relayConfigs[i].schedule.stopSecond[s];
+            schedule["enabled"] = relayConfigs[i].schedule.enabled[s];
+        }
     }
-  }
-  
-  String response;
-  serializeJson(doc, response);
-  server.send(200, "application/json", response);
+    
+    String response;
+    serializeJson(doc, response);
+    server.send(200, "application/json", response);
 }
 
 void handleManualControl() {
-  if (!server.hasArg("plain")) {
-    server.send(400, "application/json", "{\"success\":false,\"error\":\"No data\"}");
-    return;
-  }
-  
-  DynamicJsonDocument doc(256);
-  DeserializationError error = deserializeJson(doc, server.arg("plain"));
-  
-  if (error) {
-    server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid JSON\"}");
-    return;
-  }
-  
-  int relay = doc["relay"];
-  bool state = doc["state"];
-  
-  if (relay >= 0 && relay < NUM_RELAYS) {
-    relayConfigs[relay].manualOverride = true;
-    relayConfigs[relay].manualState = state;
-    saveConfiguration();
-    server.send(200, "application/json", "{\"success\":true}");
-  } else {
-    server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid relay\"}");
-  }
+    if (!server.hasArg("plain")) {
+        server.send(400, "application/json", "{\"success\":false,\"error\":\"No data\"}");
+        return;
+    }
+    
+    DynamicJsonDocument doc(256);
+    DeserializationError error = deserializeJson(doc, server.arg("plain"));
+    
+    if (error) {
+        server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid JSON\"}");
+        return;
+    }
+    
+    int relay = doc["relay"];
+    bool state = doc["state"];
+    
+    if (relay >= 0 && relay < NUM_RELAYS) {
+        relayConfigs[relay].manualOverride = true;
+        relayConfigs[relay].manualState = state;
+        saveConfiguration();
+        server.send(200, "application/json", "{\"success\":true}");
+    } else {
+        server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid relay\"}");
+    }
 }
 
 void handleResetManual() {
-  if (!server.hasArg("plain")) {
-    server.send(400, "application/json", "{\"success\":false,\"error\":\"No data\"}");
-    return;
-  }
-  
-  DynamicJsonDocument doc(256);
-  DeserializationError error = deserializeJson(doc, server.arg("plain"));
-  
-  if (error) {
-    server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid JSON\"}");
-    return;
-  }
-  
-  int relay = doc["relay"];
-  
-  if (relay >= 0 && relay < NUM_RELAYS) {
-    relayConfigs[relay].manualOverride = false;
-    saveConfiguration();
-    server.send(200, "application/json", "{\"success\":true}");
-  } else {
-    server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid relay\"}");
-  }
+    if (!server.hasArg("plain")) {
+        server.send(400, "application/json", "{\"success\":false,\"error\":\"No data\"}");
+        return;
+    }
+    
+    DynamicJsonDocument doc(256);
+    DeserializationError error = deserializeJson(doc, server.arg("plain"));
+    
+    if (error) {
+        server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid JSON\"}");
+        return;
+    }
+    
+    int relay = doc["relay"];
+    
+    if (relay >= 0 && relay < NUM_RELAYS) {
+        relayConfigs[relay].manualOverride = false;
+        saveConfiguration();
+        server.send(200, "application/json", "{\"success\":true}");
+    } else {
+        server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid relay\"}");
+    }
 }
 
 void handleSaveRelay() {
-  if (!server.hasArg("plain")) {
-    server.send(400, "application/json", "{\"success\":false,\"error\":\"No data\"}");
-    return;
-  }
-  
-  DynamicJsonDocument doc(2048);
-  DeserializationError error = deserializeJson(doc, server.arg("plain"));
-  
-  if (error) {
-    server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid JSON\"}");
-    return;
-  }
-  
-  int relay = doc["relay"];
-  JsonArray schedules = doc["schedules"].as<JsonArray>();
-  
-  if (relay >= 0 && relay < NUM_RELAYS && schedules.size() >= 4) {
-    for (int s = 0; s < 4; s++) {
-      relayConfigs[relay].schedule.startHour[s] = schedules[s]["startHour"];
-      relayConfigs[relay].schedule.startMinute[s] = schedules[s]["startMinute"];
-      relayConfigs[relay].schedule.startSecond[s] = schedules[s]["startSecond"];
-      relayConfigs[relay].schedule.stopHour[s] = schedules[s]["stopHour"];
-      relayConfigs[relay].schedule.stopMinute[s] = schedules[s]["stopMinute"];
-      relayConfigs[relay].schedule.stopSecond[s] = schedules[s]["stopSecond"];
-      relayConfigs[relay].schedule.enabled[s] = schedules[s]["enabled"];
+    if (!server.hasArg("plain")) {
+        server.send(400, "application/json", "{\"success\":false,\"error\":\"No data\"}");
+        return;
     }
-    saveConfiguration();
-    server.send(200, "application/json", "{\"success\":true}");
-  } else {
-    server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid relay or schedules\"}");
-  }
+    
+    DynamicJsonDocument doc(4096); // Increased size for 8 schedules
+    DeserializationError error = deserializeJson(doc, server.arg("plain"));
+    
+    if (error) {
+        server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid JSON\"}");
+        return;
+    }
+    
+    int relay = doc["relay"];
+    JsonArray schedules = doc["schedules"].as<JsonArray>();
+    
+    if (relay >= 0 && relay < NUM_RELAYS && schedules.size() >= 8) {
+        for (int s = 0; s < 8; s++) {
+            relayConfigs[relay].schedule.startHour[s] = schedules[s]["startHour"];
+            relayConfigs[relay].schedule.startMinute[s] = schedules[s]["startMinute"];
+            relayConfigs[relay].schedule.startSecond[s] = schedules[s]["startSecond"];
+            relayConfigs[relay].schedule.stopHour[s] = schedules[s]["stopHour"];
+            relayConfigs[relay].schedule.stopMinute[s] = schedules[s]["stopMinute"];
+            relayConfigs[relay].schedule.stopSecond[s] = schedules[s]["stopSecond"];
+            relayConfigs[relay].schedule.enabled[s] = schedules[s]["enabled"];
+        }
+        saveConfiguration();
+        server.send(200, "application/json", "{\"success\":true}");
+    } else {
+        server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid relay or schedules\"}");
+    }
 }
 
 void handleGetTime() {
-  DynamicJsonDocument doc(128);
-  char timeStr[9];
-  
-  time_t now;
-  time(&now);
-  if (now > 1609459200) {  // Valid time after Jan 1, 2021
-    struct tm *timeinfo = localtime(&now);
-    sprintf(timeStr, "%02d:%02d:%02d", 
-            timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
-  } else {
-    strcpy(timeStr, "--:--:--");
-  }
-  
-  doc["time"] = timeStr;
-  
-  String response;
-  serializeJson(doc, response);
-  server.send(200, "application/json", response);
+    DynamicJsonDocument doc(128);
+    char timeStr[9];
+    
+    time_t currentEpoch = getCurrentEpoch();
+    
+    if (currentEpoch > 100000) {
+        struct tm *timeinfo = localtime(&currentEpoch);
+        sprintf(timeStr, "%02d:%02d:%02d", 
+                timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+    } else {
+        strcpy(timeStr, "--:--:--");
+    }
+    
+    doc["time"] = timeStr;
+    
+    String response;
+    serializeJson(doc, response);
+    server.send(200, "application/json", response);
 }
 
 void handleGetWiFi() {
-  DynamicJsonDocument doc(256);
-  doc["ssid"] = sysConfig.sta_ssid;
-  
-  String response;
-  serializeJson(doc, response);
-  server.send(200, "application/json", response);
+    DynamicJsonDocument doc(256);
+    doc["ssid"] = sysConfig.sta_ssid;
+    
+    String response;
+    serializeJson(doc, response);
+    server.send(200, "application/json", response);
 }
 
 void handleSaveWiFi() {
-  if (!server.hasArg("plain")) {
-    server.send(400, "application/json", "{\"success\":false,\"error\":\"No data\"}");
-    return;
-  }
-  
-  DynamicJsonDocument doc(256);
-  DeserializationError error = deserializeJson(doc, server.arg("plain"));
-  
-  if (error) {
-    server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid JSON\"}");
-    return;
-  }
-  
-  const char* ssid = doc["ssid"];
-  const char* password = doc["password"];
-  
-  if (ssid && strlen(ssid) < 32) {
-    strcpy(sysConfig.sta_ssid, ssid);
-    if (password) {
-      strcpy(sysConfig.sta_password, password);
-    } else {
-      sysConfig.sta_password[0] = '\0';
-    }
-    saveConfiguration();
-    
-    server.send(200, "application/json", "{\"success\":true}");
-    delay(1000);
-    ESP.restart();
-  } else {
-    server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid SSID\"}");
-  }
-}
-
-void handleGetAP() {
-  DynamicJsonDocument doc(256);
-  doc["ap_ssid"] = sysConfig.ap_ssid;
-  // Don't send password for security
-  
-  String response;
-  serializeJson(doc, response);
-  server.send(200, "application/json", response);
-}
-
-void handleSaveAP() {
-  if (!server.hasArg("plain")) {
-    server.send(400, "application/json", "{\"success\":false,\"error\":\"No data\"}");
-    return;
-  }
-  
-  DynamicJsonDocument doc(256);
-  DeserializationError error = deserializeJson(doc, server.arg("plain"));
-  
-  if (error) {
-    server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid JSON\"}");
-    return;
-  }
-  
-  const char* ap_ssid_new = doc["ap_ssid"];
-  const char* ap_password_new = doc["ap_password"];
-  
-  if (ap_ssid_new && strlen(ap_ssid_new) > 0 && strlen(ap_ssid_new) < 32) {
-    strcpy(sysConfig.ap_ssid, ap_ssid_new);
-    if (ap_password_new && strlen(ap_password_new) > 0) {
-      if (strlen(ap_password_new) < 8) {
-        server.send(400, "application/json", "{\"success\":false,\"error\":\"Password must be at least 8 characters\"}");
+    if (!server.hasArg("plain")) {
+        server.send(400, "application/json", "{\"success\":false,\"error\":\"No data\"}");
         return;
-      }
-      strcpy(sysConfig.ap_password, ap_password_new);
-    } else {
-      sysConfig.ap_password[0] = '\0';
     }
-    saveConfiguration();
     
-    server.send(200, "application/json", "{\"success\":true}");
-    delay(1000);
-    ESP.restart();
-  } else {
-    server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid AP SSID\"}");
-  }
+    DynamicJsonDocument doc(256);
+    DeserializationError error = deserializeJson(doc, server.arg("plain"));
+    
+    if (error) {
+        server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid JSON\"}");
+        return;
+    }
+    
+    const char* ssid = doc["ssid"];
+    const char* password = doc["password"];
+    
+    if (ssid && strlen(ssid) < 32) {
+        strcpy(sysConfig.sta_ssid, ssid);
+        if (password) {
+            strcpy(sysConfig.sta_password, password);
+        } else {
+            sysConfig.sta_password[0] = '\0';
+        }
+        saveConfiguration();
+        
+        server.send(200, "application/json", "{\"success\":true}");
+        delay(1000);
+        ESP.restart();
+    } else {
+        server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid SSID\"}");
+    }
 }
 
 void handleGetNTP() {
-  DynamicJsonDocument doc(256);
-  doc["ntpServer"] = sysConfig.ntp_server;
-  doc["gmtOffset"] = sysConfig.gmt_offset;
-  doc["daylightOffset"] = sysConfig.daylight_offset;
-  
-  String response;
-  serializeJson(doc, response);
-  server.send(200, "application/json", response);
+    DynamicJsonDocument doc(256);
+    doc["ntpServer"] = sysConfig.ntp_server;
+    doc["gmtOffset"] = sysConfig.gmt_offset;
+    doc["daylightOffset"] = sysConfig.daylight_offset;
+    
+    String response;
+    serializeJson(doc, response);
+    server.send(200, "application/json", response);
 }
 
 void handleSaveNTP() {
-  if (!server.hasArg("plain")) {
-    server.send(400, "application/json", "{\"success\":false,\"error\":\"No data\"}");
-    return;
-  }
-  
-  DynamicJsonDocument doc(256);
-  DeserializationError error = deserializeJson(doc, server.arg("plain"));
-  
-  if (error) {
-    server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid JSON\"}");
-    return;
-  }
-  
-  const char* ntp_server = doc["ntpServer"];
-  
-  if (ntp_server && strlen(ntp_server) < 48) {
-    strcpy(sysConfig.ntp_server, ntp_server);
-    sysConfig.gmt_offset = doc["gmtOffset"];
-    sysConfig.daylight_offset = doc["daylightOffset"];
-    saveConfiguration();
-    
-    if (wifiConnected) {
-      timeClient.setPoolServerName(sysConfig.ntp_server);
-      timeClient.setTimeOffset(sysConfig.gmt_offset);
-      if (timeClient.update()) {
-        time_t epoch = timeClient.getEpochTime();
-        struct timeval tv = { .tv_sec = epoch, .tv_usec = 0 };
-        settimeofday(&tv, nullptr);
-        // Save the updated time
-        sysConfig.last_ntp_sync_epoch = epoch;
-        saveConfiguration();
-      }
+    if (!server.hasArg("plain")) {
+        server.send(400, "application/json", "{\"success\":false,\"error\":\"No data\"}");
+        return;
     }
     
-    server.send(200, "application/json", "{\"success\":true}");
-  } else {
-    server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid NTP server\"}");
-  }
+    DynamicJsonDocument doc(256);
+    DeserializationError error = deserializeJson(doc, server.arg("plain"));
+    
+    if (error) {
+        server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid JSON\"}");
+        return;
+    }
+    
+    const char* ntp_server = doc["ntpServer"];
+    
+    if (ntp_server && strlen(ntp_server) < 48) {
+        strcpy(sysConfig.ntp_server, ntp_server);
+        sysConfig.gmt_offset = doc["gmtOffset"];
+        sysConfig.daylight_offset = doc["daylightOffset"];
+        saveConfiguration();
+        
+        if (wifiConnected) {
+            timeClient.setPoolServerName(sysConfig.ntp_server);
+            timeClient.setTimeOffset(sysConfig.gmt_offset);
+            timeClient.update();
+        }
+        
+        server.send(200, "application/json", "{\"success\":true}");
+    } else {
+        server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid NTP server\"}");
+    }
 }
 
 void handleSyncNTP() {
-  if (wifiConnected) {
-    if (timeClient.update()) {
-      time_t epoch = timeClient.getEpochTime();
-      struct timeval tv = { .tv_sec = epoch, .tv_usec = 0 };
-      settimeofday(&tv, nullptr);
-      // Save the synced time to EEPROM
-      sysConfig.last_ntp_sync_epoch = epoch;
-      saveConfiguration();
-      server.send(200, "application/json", "{\"success\":true}");
+    if (wifiConnected) {
+        if (timeClient.update()) {
+            syncInternalRTC();
+            server.send(200, "application/json", "{\"success\":true}");
+        } else {
+            server.send(400, "application/json", "{\"success\":false,\"error\":\"Failed to sync\"}");
+        }
     } else {
-      server.send(400, "application/json", "{\"success\":false,\"error\":\"Failed to sync\"}");
+        server.send(400, "application/json", "{\"success\":false,\"error\":\"WiFi not connected\"}");
     }
-  } else {
-    server.send(400, "application/json", "{\"success\":false,\"error\":\"WiFi not connected\"}");
-  }
+}
+
+void handleGetAP() {
+    DynamicJsonDocument doc(256);
+    doc["ap_ssid"] = sysConfig.ap_ssid;
+    doc["ap_password"] = sysConfig.ap_password;
+    
+    String response;
+    serializeJson(doc, response);
+    server.send(200, "application/json", response);
+}
+
+void handleSaveAP() {
+    if (!server.hasArg("plain")) {
+        server.send(400, "application/json", "{\"success\":false,\"error\":\"No data\"}");
+        return;
+    }
+    
+    DynamicJsonDocument doc(256);
+    DeserializationError error = deserializeJson(doc, server.arg("plain"));
+    
+    if (error) {
+        server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid JSON\"}");
+        return;
+    }
+    
+    const char* ap_ssid_new = doc["ap_ssid"];
+    const char* ap_password_new = doc["ap_password"];
+    
+    if (ap_ssid_new && strlen(ap_ssid_new) > 0 && strlen(ap_ssid_new) < 32) {
+        strcpy(sysConfig.ap_ssid, ap_ssid_new);
+        strcpy(ap_ssid, ap_ssid_new);
+        
+        if (ap_password_new && strlen(ap_password_new) > 0) {
+            strcpy(sysConfig.ap_password, ap_password_new);
+            strcpy(ap_password, ap_password_new);
+        } else {
+            sysConfig.ap_password[0] = '\0';
+            ap_password[0] = '\0';
+        }
+        
+        saveConfiguration();
+        
+        server.send(200, "application/json", "{\"success\":true}");
+        
+        // Restart AP with new settings after sending response
+        delay(100);
+        restartAP();
+    } else {
+        server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid AP SSID\"}");
+    }
 }
