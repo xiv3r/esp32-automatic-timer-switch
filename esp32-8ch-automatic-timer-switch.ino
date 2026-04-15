@@ -7,14 +7,15 @@
 #include <ArduinoJson.h>
 #include <sys/time.h>   // Added for settimeofday()
 #include <time.h>       // Added for time() and localtime()
+#include <stdint.h>     // For explicit integer types
 
 // EEPROM Configuration
 #define EEPROM_SIZE 2048
 #define EEPROM_MAGIC 0x1234
-#define EEPROM_VERSION 1
+#define EEPROM_VERSION 2    // Incremented for new time storage field
 
 // WiFi AP Configuration - Changed from const to variables
-char ap_ssid[32] = "ESP32_8CH_Timer_Switch";
+char ap_ssid[32] = "ESP32_8CH_Smart_Switch";
 char ap_password[64] = "ESP32-admin";
 
 // DNS and Web Server
@@ -57,7 +58,7 @@ struct RelayConfig {
   bool manualState;
 } relayConfigs[NUM_RELAYS];
 
-// System Configuration - Extended to include AP settings
+// System Configuration - Extended to include AP settings and RTC persistence
 struct SystemConfig {
   uint16_t magic;
   uint8_t version;
@@ -68,12 +69,13 @@ struct SystemConfig {
   char ntp_server[48];
   long gmt_offset;
   int daylight_offset;
+  time_t last_ntp_sync_epoch;   // NEW: Last successful NTP epoch saved to EEPROM
 };
 
 SystemConfig sysConfig;
 bool wifiConnected = false;
 unsigned long lastNTPSync = 0;
-const unsigned long NTP_SYNC_INTERVAL = 1000; // 1 seconds
+const unsigned long NTP_SYNC_INTERVAL = 1000; // 1 ms
 
 // HTML Pages (unchanged)
 const char index_html[] PROGMEM = R"rawliteral(
@@ -110,9 +112,9 @@ const char index_html[] PROGMEM = R"rawliteral(
 <body>
     <div class="container">
         <div class="header">
-            <h1>ESP32 8-Channel Relay Timer</h1>
+            <h1>ESP32 8-Channel Relay Timer Switch</h1>
             <div class="nav">
-                <a href="/">Relays</a>
+                <a href="/">Relay Settings</a>
                 <a href="/wifi">WiFi Settings</a>
                 <a href="/ap">AP Settings</a>
                 <a href="/ntp">NTP/RTC Settings</a>
@@ -366,7 +368,7 @@ const char wifi_html[] PROGMEM = R"rawliteral(
         <div class="header">
             <h1>WiFi Station Settings</h1>
             <div class="nav">
-                <a href="/">Relays</a>
+                <a href="/">Relay Settings</a>
                 <a href="/wifi">WiFi Settings</a>
                 <a href="/ap">AP Settings</a>
                 <a href="/ntp">NTP/RTC Settings</a>
@@ -475,7 +477,7 @@ const char ap_html[] PROGMEM = R"rawliteral(
         <div class="header">
             <h1>Access Point Settings</h1>
             <div class="nav">
-                <a href="/">Relays</a>
+                <a href="/">Relay Settings</a>
                 <a href="/wifi">WiFi Settings</a>
                 <a href="/ap">AP Settings</a>
                 <a href="/ntp">NTP/RTC Settings</a>
@@ -519,7 +521,7 @@ const char ap_html[] PROGMEM = R"rawliteral(
             fetch('/api/ap')
                 .then(response => response.json())
                 .then(data => {
-                    document.getElementById('ap_ssid').value = data.ap_ssid || 'ESP32_8Ch_Smart_Switch';
+                    document.getElementById('ap_ssid').value = data.ap_ssid || 'ESP32_8CH_Smart_Switch';
                 })
                 .catch(error => {
                     console.error('Error loading AP settings:', error);
@@ -595,7 +597,7 @@ const char ntp_html[] PROGMEM = R"rawliteral(
         <div class="header">
             <h1>NTP & RTC Settings</h1>
             <div class="nav">
-                <a href="/">Relays</a>
+                <a href="/">Relay Settings</a>
                 <a href="/wifi">WiFi Settings</a>
                 <a href="/ap">AP Settings</a>
                 <a href="/ntp">NTP/RTC Settings</a>
@@ -768,9 +770,19 @@ void setup() {
         time_t epoch = timeClient.getEpochTime();
         struct timeval tv = { .tv_sec = epoch, .tv_usec = 0 };
         settimeofday(&tv, nullptr);
-        Serial.println("System time set from NTP");
+        // Save this epoch to EEPROM for future cold boots
+        sysConfig.last_ntp_sync_epoch = epoch;
+        saveConfiguration();
+        Serial.println("System time set from NTP and saved to EEPROM");
       }
     }
+  }
+  
+  // If WiFi failed and we have a saved epoch, restore it as fallback
+  if (!wifiConnected && sysConfig.last_ntp_sync_epoch > 1609459200) { // after 2021
+    struct timeval tv = { .tv_sec = sysConfig.last_ntp_sync_epoch, .tv_usec = 0 };
+    settimeofday(&tv, nullptr);
+    Serial.println("Restored time from EEPROM (last NTP sync)");
   }
   
   // Always start AP mode for configuration
@@ -797,7 +809,10 @@ void loop() {
       time_t epoch = timeClient.getEpochTime();
       struct timeval tv = { .tv_sec = epoch, .tv_usec = 0 };
       settimeofday(&tv, nullptr);
-      Serial.println("System time updated from NTP");
+      // Persist the new time to EEPROM
+      sysConfig.last_ntp_sync_epoch = epoch;
+      saveConfiguration();
+      Serial.println("System time updated from NTP and saved to EEPROM");
     }
   }
   
@@ -903,18 +918,26 @@ void processRelaySchedules() {
 void loadConfiguration() {
   EEPROM.get(0, sysConfig);
   
-  if (sysConfig.magic != EEPROM_MAGIC || sysConfig.version != EEPROM_VERSION) {
-    // Initialize with defaults
-    Serial.println("Initializing default configuration");
+  // Check for valid configuration
+  if (sysConfig.magic != EEPROM_MAGIC) {
+    Serial.println("No valid config found – initializing defaults");
     sysConfig.magic = EEPROM_MAGIC;
     sysConfig.version = EEPROM_VERSION;
     strcpy(sysConfig.sta_ssid, "");
     strcpy(sysConfig.sta_password, "");
-    strcpy(sysConfig.ap_ssid, "ESP32_8Ch_Smart_Switch");
+    strcpy(sysConfig.ap_ssid, "ESP32_8CH_Smart_Switch");
     strcpy(sysConfig.ap_password, "ESP32-admin");
     strcpy(sysConfig.ntp_server, "ph.pool.ntp.org");
     sysConfig.gmt_offset = 28800;
     sysConfig.daylight_offset = 0;
+    sysConfig.last_ntp_sync_epoch = 0;  // NEW: Initialize new field
+    saveConfiguration();
+  }
+  // Handle version migration (from version 1 to 2)
+  else if (sysConfig.version == 1) {
+    Serial.println("Migrating configuration from version 1 to 2");
+    sysConfig.version = EEPROM_VERSION;
+    sysConfig.last_ntp_sync_epoch = 0;  // Initialize new field
     saveConfiguration();
   }
   
@@ -930,6 +953,7 @@ void loadConfiguration() {
   }
   
   Serial.println("Configuration loaded");
+  Serial.printf("Last NTP sync epoch: %lu\n", sysConfig.last_ntp_sync_epoch);
 }
 
 void saveConfiguration() {
@@ -948,7 +972,7 @@ void saveConfiguration() {
   }
 }
 
-// API Handlers
+// API Handlers (unchanged except handleSyncNTP now also saves epoch)
 void handleGetRelays() {
   DynamicJsonDocument doc(4096);
   JsonArray array = doc.to<JsonArray>();
@@ -1213,6 +1237,9 @@ void handleSaveNTP() {
         time_t epoch = timeClient.getEpochTime();
         struct timeval tv = { .tv_sec = epoch, .tv_usec = 0 };
         settimeofday(&tv, nullptr);
+        // Save the updated time
+        sysConfig.last_ntp_sync_epoch = epoch;
+        saveConfiguration();
       }
     }
     
@@ -1228,6 +1255,9 @@ void handleSyncNTP() {
       time_t epoch = timeClient.getEpochTime();
       struct timeval tv = { .tv_sec = epoch, .tv_usec = 0 };
       settimeofday(&tv, nullptr);
+      // Save the synced time to EEPROM
+      sysConfig.last_ntp_sync_epoch = epoch;
+      saveConfiguration();
       server.send(200, "application/json", "{\"success\":true}");
     } else {
       server.send(400, "application/json", "{\"success\":false,\"error\":\"Failed to sync\"}");
