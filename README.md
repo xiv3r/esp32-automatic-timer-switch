@@ -25,16 +25,16 @@
 
 # Schematics
 ```
-RELAY     ESP32 38P
+RELAY     ESP32 30P/38P
 VCC _____ 5VIN 
-IN1 _____ D32 GPIO
-IN2 _____ D33 GPIO
-IN3 _____ D25 GPIO
-IN4 _____ D26 GPIO
-IN5 _____ D27 GPIO
-IN6 _____ D14 GPIO
-IN7 _____ D12 GPIO
-IN8 _____ D13 GPIO
+IN1 _____ 26 GPIO
+IN2 _____ 27 GPIO
+IN3 _____ 14 GPIO
+IN4 _____ 12 GPIO
+IN5 _____ 13 GPIO
+IN6 _____ 15 GPIO
+IN7 _____ 2 GPIO
+IN8 _____ 4 GPIO
 GND _____ GND
 ```
 <img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/img/esp32_dashboard.jpg">
