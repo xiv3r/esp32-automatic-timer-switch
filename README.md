@@ -9,9 +9,6 @@
 - ArduinoJson
 - NTPClient
 
-# Note
-- In case the ntp server is inactive to maintain the relay switch time precision control add a 5vdc battery for esp32 and separate the 5vdc relay power supply adaptor.
-
 # Installation
 - Download the [flasher](https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/flasher) and [firmware](https://github.com/xiv3r/esp32-automatic-timer-switch/raw/refs/heads/main/esp32-8ch-timer-switch-firmware-0x0.bin) then flash using `0x0` offset
 
@@ -38,8 +35,11 @@ IN8 _____ 4 GPIO
 GND _____ GND
 ```
 <img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/img/esp32_dashboard.jpg">
-
+<details><summary>
+  
 # Full Features
+</summary>
+
 ## 🔌 Relay Control System
 · 8 Independent Relay Channels - GPIO pin configurable
 
@@ -197,3 +197,4 @@ Endpoint Method Purpose
 · Security lighting schedules
 
 · Energy management systems
+</details>
