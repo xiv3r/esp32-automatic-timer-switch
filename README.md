@@ -20,7 +20,7 @@
 # Activation
 - Go to `wifi settings` and connect to your home wifi after the NTP is synchronized everything will works.
 
-# Schematics
+# GPIO Connection 
 ```
 RELAY     ESP32 30P/38P
 VCC _____ 5VIN 
