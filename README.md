@@ -17,7 +17,7 @@
 
 # WiFi Key
 `Note: Take note your wifi credentials reset doesn't supported (anti-reset protection)` 
-- WiFi SSID: `ESP32_8CH_Timer_Switch`
+- WiFi SSID: `ESP32_11CH_Timer_Switch`
 - Password: `ESP32-admin`
 
 # Activation
