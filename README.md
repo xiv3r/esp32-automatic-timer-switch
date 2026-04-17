@@ -1,6 +1,6 @@
 # Requirements
 - ESP32 30P/38P Pins
-- 8-Channel Relay
+- 11-Channel Relay
 - 10 Dupont Wire
 - Home Wifi for NTP/RTC sync
 - 5vDC Battery (Maintain Power and Timer)(optional)
@@ -24,17 +24,23 @@
 ```
 RELAY     ESP32 30P/38P
 VCC _____ 5VIN 
-IN1 _____ 26 GPIO
-IN2 _____ 27 GPIO
-IN3 _____ 14 GPIO
-IN4 _____ 12 GPIO
-IN5 _____ 13 GPIO
-IN6 _____ 15 GPIO
-IN7 _____ 2 GPIO
-IN8 _____ 4 GPIO
+IN1 _____ 16
+IN2 _____ 17
+IN3 _____ 18
+IN4 _____ 19
+IN5 _____ 21
+IN6 _____ 22
+IN7 _____ 23
+IN8 _____ 25
+- Extra Relay
+IN1 _____ 26
+IN2 _____ 27
+IN3 _____ 32
 GND _____ GND
 ```
+
 <img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/img/esp32_dashboard.jpg">
+
 <details><summary>
   
 # Full Features
