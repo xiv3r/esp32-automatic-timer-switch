@@ -99,7 +99,7 @@ char ap_password[32] = "ESP32-admin";
 
 bool wifiConnected = false;
 unsigned long lastNTPSync = 0;
-const unsigned long NTP_SYNC_INTERVAL = 10000; // 10 seconds 
+const unsigned long NTP_SYNC_INTERVAL = 3600000; // 1 hour 
 
 // Function prototypes
 time_t getCurrentEpoch();
