@@ -1,7 +1,7 @@
 # Requirements
 - ESP32 30P/38P Pins
-- 11-Channel Relay
-- 10 Dupont Wire
+- 1 -> 16 Channel Relay
+- Female Dupont Wire
 - Home Wifi for NTP/RTC sync
 - 5vDC Battery (Maintain Power and Timer)(optional)
 
@@ -14,7 +14,7 @@
 
 # WiFi Key
 `Note: Take note your wifi credentials reset doesn't supported (anti-reset protection)` 
-- WiFi SSID: `ESP32_11CH_Timer_Switch`
+- WiFi SSID: `ESP32_16CH_Timer_Switch`
 - Password: `ESP32-admin`
 
 # Activation
