@@ -13,7 +13,6 @@
 - Download the [flasher](https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/flasher) and [firmware](https://github.com/xiv3r/esp32-automatic-timer-switch/raw/refs/heads/main/esp32-8ch-timer-switch-firmware-0x0.bin) then flash using `0x0` offset
 
 # WiFi Key
-`Note: Take note your wifi credentials reset doesn't supported (anti-reset protection)` 
 - WiFi SSID: `ESP32_16CH_Timer_Switch`
 - Password: `ESP32-admin`
 
