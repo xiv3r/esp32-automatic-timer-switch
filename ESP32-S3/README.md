@@ -24,7 +24,7 @@ firmware  : 0x10000
 - Password:`ESP32-S3-admin`
 
 # Setup
-- Connect your ESP32-S3 to your Home Wifi
+- Go to `192.168.4.1/wifi` then connect your ESP32-S3 to your Home Wifi
 
 # GPIO Connections
 ```
