@@ -28,16 +28,16 @@
 # GPIO Connection 
 ```
 RELAY     ESP32 30P/38P
-VCC _____ 5VIN 
-IN1 _____ 16
-IN2 _____ 17
-IN3 _____ 18
-IN4 _____ 19
-IN5 _____ 21
-IN6 _____ 22
-IN7 _____ 23
-IN8 _____ 25
-IN9 _____ 26
+VCC  _____ 5VIN 
+IN1  _____ 16
+IN2  _____ 17
+IN3  _____ 18
+IN4  _____ 19
+IN5  _____ 21
+IN6  _____ 22
+IN7  _____ 23
+IN8  _____ 25
+IN9  _____ 26
 IN10 _____ 27
 IN11 _____ 32
 IN12 _____ 33
@@ -45,7 +45,7 @@ IN13 _____ 13
 IN14 _____ 14
 IN15 _____ 4
 IN16 _____ 5
-GND _____ GND
+GND  _____ GND
 ```
 
 <img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/img/esp32-16ch.jpg">
