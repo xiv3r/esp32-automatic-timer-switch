@@ -10,14 +10,17 @@
 - NTPClient
 
 # Installation
-- Download the [flasher](https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/flasher) and [firmware](https://github.com/xiv3r/esp32-automatic-timer-switch/raw/refs/heads/main/esp32-8ch-timer-switch-firmware-0x0.bin) then flash using `0x0` offset
+- Download the [flasher](https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/flasher) and [firmware](https://github.com/xiv3r/esp32-automatic-timer-switch/raw/refs/heads/main/esp32-16ch-firmware-0x0.bin) then flash using `0x0` offset
 
 # WiFi Key
 - WiFi SSID: `ESP32_16CH_Timer_Switch`
 - Password: `ESP32-admin`
 
 # Activation
-- Go to `wifi settings` and connect to your home wifi after the NTP is synchronized everything will works.
+- Go to `wifi settings` and connect to your home wifi after the NTP is synchronized everything will work
+
+# Relay Name
+- Double click relay name to edit
 
 # GPIO Connection 
 ```
@@ -42,7 +45,7 @@ IN16 _____ 5
 GND _____ GND
 ```
 
-<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/img/esp32_dashboard.jpg">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/img/esp32-16ch.jpg">
 
 <details><summary>
   
