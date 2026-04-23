@@ -1,3 +1,31 @@
+# Requirements
+- 5V 1-16 Channel Relay
+- ESP32-S3 Dev Module
+- 2pcs Dupont Wires
+- 5V 5A Power Supply
+
+`Optional`
+- 5V Battery (Maintain Time)
+
+# Libraries
+- ArduinoJson
+- NTPClient
+
+# Installation
+- Flash
+```
+bootloader: 0x0
+partitions: 0x8000
+firmware  : 0x10000
+```
+# Wifi Key
+- Wifi Name:`ESP32_S3_16CH_Timer_Switch`
+
+- Password:`ESP32-S3-admin`
+
+# Setup
+- Connect your ESP32-S3 to your Home Wifi
+
 # GPIO Connections
 ```
 16CH | ESP32-S3
