@@ -4,7 +4,8 @@
 - Female Dupont Wire
 - Home Wifi for NTP/RTC sync
 - 5v 5a Power supply 
-  `5vDC Battery (Maintain Power and Timer)(optional)`
+- Optional 
+  5vDC Battery (Maintain Power and Timer)
 
 # Arduino Libraries
 - ArduinoJson
