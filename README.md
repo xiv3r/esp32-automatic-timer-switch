@@ -52,161 +52,128 @@ GND _____ GND
 # Full Features
 </summary>
 
-## 🔌 Relay Control System
-· 8 Independent Relay Channels - GPIO pin configurable
+## Core Features
+```
+· 16 independent relays with configurable GPIO pins
+· Manual override mode (ON/OFF/Auto) via web interface
+· 8 schedules per relay for automated control
+· Flexible scheduling:
+  · Normal schedules (start < stop within same day)
+  · Overnight schedules (start > stop, spans midnight)
+  · Always-ON mode (start = stop)
+· Custom naming for each relay (up to 15 characters)
+· Active-low relay support (configurable)
+```
 
-· Active LOW/HIGH Support - Configurable relay trigger logic
+## WiFi Connectivity
+```
+· Dual-mode operation: Simultaneous STA (client) + AP (access point)
+· Non-blocking WiFi reconnection with exponential backoff
+· Automatic reconnect (up to 10 attempts, then 5-minute cooldown)
+· WiFi network scanner (async, non-blocking)
+· Captive portal for easy initial setup
+```
 
-· Manual Override Mode - Direct ON/OFF control bypassing schedules
+## Time Management
+```
+· NTP synchronization with multiple fallback servers:
+  · ph.pool.ntp.org → pool.ntp.org → time.nist.gov → time.google.com
+· Internal RTC with drift compensation (EWMA filter)
+· Configurable sync interval (1-24 hours)
+· Timezone support with GMT and DST offsets
+· Persistent time storage across reboots
+```
 
-· Auto Mode - Returns to scheduled operation
+## Web Interface
+```
+· Responsive HTML5/CSS3 interface (mobile-friendly)
+· Five main pages:
+  1. Relays - Control and schedule management
+  2. WiFi - Network configuration and scanning
+  3. Time - NTP and timezone settings
+  4. AP - Access point configuration
+  5. System - Device info and maintenance
+· Real-time status indicators (WiFi, NTP, time)
+· Toast notifications for user feedback
+· Double-click editing for relay names
+```
 
-· Real-time Status Display - Live relay state monitoring
+## Network Services
+```
+· mDNS/Bonjour support (hostname.local access)
+· DNS server for captive portal functionality
+· RESTful JSON API for all operations
+· Configurable AP with:
+  · Channel selection (1-13)
+  · Hidden SSID option
+  · Password protection (8+ chars or open)
+```
 
-## ⏰ Timer & Scheduling
-· 4 Independent Schedules per Relay - Up to 64 total schedules system-wide
+## Configuration Storage
+```
+· Preferences/NVS for persistent storage
+· Versioned configuration (v3 main config + v4 extensions)
+· Separate extended config for advanced settings
+· Factory reset capability
+· Automatic corruption recovery
+```
 
-· Precise Time Control - Hour, minute, and second granularity
-
-· Overnight Scheduling - Supports schedules crossing midnight
-
-. Per-Schedule Enable/Disable - Individual schedule activation
-
-· Automatic Schedule Processing - Runs continuously in background
-
-## 🌐 Network & Connectivity
-· WiFi Station Mode - Connects to existing WiFi networks
-
-· Access Point Mode - Creates its own WiFi network for configuration
-
-· Dual-Mode Operation - Runs both Station and AP simultaneously
-
-· Captive Portal - Automatic redirect to configuration page
-
-· DNS Server - Handles all DNS requests for easy access
-
-## 🕐 Time Synchronization (NTP/RTC)
-· NTP Client - Syncs time from internet time servers· Customizable NTP Server - Configure any NTP server
-
-· Timezone Support - GMT offset and daylight saving configuration
-
-· RTC Emulation - Stores last known time in EEPROM
-
-· Cold Boot Time Recovery - Restores time without internet connection
-
-· Automatic Time Sync - Regular NTP updates when connected
-
-## 💾 Persistent Storage (EEPROM)
-. Configuration Backup - All settings survive power cycles
-
-· Version Migration - Automatic upgrades from older config versions
-
-· Magic Number Validation - Detects corrupted/invalid configurations
-
-. Stored Settings Include:
-  · WiFi credentials (SSID & password)
-  · AP credentials (SSID & password)
-  · NTP server configuration
-  · Timezone offsets
-  · Last successful NTP sync timestamp
-  · All 8 relay configurations and schedules
-
-## 🌍 Web Interface
-· Responsive Design - Works on desktop, tablet, and mobile
-
-· 4 Main Pages:
-  1. Relay Control Dashboard - Main interface for all 16 relays
-  2. WiFi Settings - Configure station network connection
-  3. AP Settings - Configure access point credentials
-  4. NTP/RTC Settings - Configure time synchronization
-
-## 📱 Web Interface Features
-. Real-time Clock Display - Live updating time in header
-
-· Visual Status Indicators - Color-coded ON/OFF states
-
-· Manual Control Buttons - Direct relay control
-
-· Schedule Configuration - Intuitive time input for each schedule
-
-· Checkbox Enable/Disable - Quick schedule activation
-
-· Save per Relay - Individual relay configuration saving
-
-· Auto-Refresh - Periodic status updates (every 60 seconds)
-
-· Notification System - Success/error feedback messages
-
-· Input Validation - Client-side time range validation
-
-## 🔧 API Endpoints
+## API Endpoints
+```
 Endpoint Method Purpose
+/api/relays GET List all relays and schedules
+/api/relay/manual POST Set manual override
+/api/relay/reset POST Clear manual override
+/api/relay/save POST Save schedules
+/api/relay/name POST Update relay name
+/api/time GET Current time and status
+/api/wifi GET/POST WiFi config and status
+/api/wifi/scan POST/GET Network scanning
+/api/ntp GET/POST NTP configuration
+/api/ntp/sync POST Force NTP sync
+/api/ap GET/POST AP configuration
+/api/system GET System information
+/api/reset POST Restart device
+/api/factory-reset POST Factory reset
 ```
-/api/relays GET Retrieve all relay states and schedules
-/api/relay/manual POST Set manual override state
-/api/relay/reset POST Cancel manual override
-/api/relay/save POST Save schedule configuration
-/api/time GET Get current system time
-/api/wifi GET/POST Get/Set WiFi station settings
-/api/ap GET/POST Get/Set Access Point settings
-/api/ntp GET/POST Get/Set NTP configuration
-/api/ntp/sync POST Force immediate NTP sync
+
+## Safety Features
+```
+· Safe relay initialization (all OFF at boot)
+· Pin validation (ESP32-safe GPIOs only)
+· Configuration validation with magic numbers
+· Drift compensation bounds (0.90-1.10)
+· NTP epoch validation (reject invalid timestamps)
 ```
 
-## 🛡️ Security Features
-· Password Protection - AP password with minimum 8 characters
+## Performance Optimizations
+```
+· Non-blocking state machines for WiFi and scans
+· Efficient JSON parsing with ArduinoJson
+· Memory-conscious design (~16KB JSON documents)
+· EWMA filtering for RTC drift compensation
+· Async WiFi scanning (doesn't block main loop)
+```
 
-· Open Network Option - Blank password for open AP
+## System Information Display
+```
+· STA IP address and connection status
+· AP IP address
+· Free heap memory
+· Uptime counter
+· WiFi RSSI with quality indicator
+· NTP sync status and age
+· Chip model and firmware version
+· mDNS hostname and status
+```
 
-· Password Not Exposed - API doesn't return stored passwords
-
-· Input Validation - Server-side validation for all settings
-
-## ⚙️ Configuration Management
-· Factory Defaults - Automatic initialization on first boot
-
-· Configuration Migration - Handles version upgrades gracefully
-
-· Automatic Restart - After WiFi/AP configuration changes
-
-· Serial Debug Output - Comprehensive logging for troubleshooting
-
-## 🔄 System Features
-· Non-blocking Operation - Schedules process without interrupting web server
-
-· Dual-core ESP32 Support - Efficient multitasking
-
-· Graceful Degradation - Continues operation without WiFi
-
-· Watchdog Friendly - Short delay() calls prevent resets
-
-## 📊 Technical Specifications
-· 8 Relays with 4 schedules each = 32 total schedules
-
-· EEPROM Storage: 2048 bytes
-
-· Configuration Version: 2 (with migration from v1)
-
-· Supported NTP Servers: Any standard NTP pool/server
-
-· Default Timezone: Philippines GMT+8 (28800 seconds)
-
-· Default AP: ESP32_8CH_Smart_Switch / ESP32-admin
-
-## 🎯 Use Cases
-· Home automation lighting control
-
-· Irrigation/sprinkler systems
-
-· Aquarium/terrarium lighting schedules
-
-· Industrial equipment timing
-
-· Holiday decoration timing
-
-· Greenhouse environmental control
-
-· Security lighting schedules
-
-· Energy management systems
+## Special Features
+```
+· Overnight schedule detection with visual indicators
+· RSSI bars for WiFi signal strength
+· Automatic AP restart on configuration changes
+· mDNS service advertisement with metadata
+· Multiple captive portal probe paths (Apple, Microsoft, Android)
+· Schedule conflict resolution (first active schedule wins)
+```
 </details>
