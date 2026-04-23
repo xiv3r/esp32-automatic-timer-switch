@@ -1,6 +1,7 @@
 /*
 ============================================================
  *  ESP32 16-Channel Relay Smart Switch — Firmware v4.1
+ *  Author: github.com/xiv3r
  *  Fixed & Improved Version
 ============================================================
  */
