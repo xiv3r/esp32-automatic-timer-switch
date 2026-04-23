@@ -12,7 +12,7 @@
 - NTPClient
 
 # Installation
-- Flash
+- Download the Firmware and Flash
 ```
 bootloader: 0x0
 partitions: 0x8000
