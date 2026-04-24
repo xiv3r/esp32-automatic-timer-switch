@@ -26,6 +26,15 @@ firmware  : 0x10000
 # Setup
 - Go to `192.168.4.1/wifi` then connect your ESP32-S3 to your Home Wifi
 
+# Access
+° Direct Access
+- mDNS:`esp32-s3-16ch-timer.local`
+- Captive Portal: Auto redirect
+- Gateway:`192.168.4.1`
+- WAN:`192.168.1.123`
+  
+° Global:`Enable Port Forwarding on your router to access anywhere`
+
 # GPIO Connections
 ```
 16CH | ESP32-S3
