@@ -33,7 +33,7 @@ firmware  : 0x10000
 - Gateway:`192.168.4.1`
 - WAN:`192.168.1.123`
   
-° Global:`Enable Port Forwarding on your router to access anywhere`
+° Global:`Enable esp32 s3 Port Forwarding on your router to access anywhere`
 
 # GPIO Connections
 ```
