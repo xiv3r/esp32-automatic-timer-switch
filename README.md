@@ -25,6 +25,15 @@
 # Relay Name
 - Double click relay name to edit
 
+# Access
+° Direct Access
+- mDNS:`esp32-16ch-timer.local`
+- Captive Portal: Auto redirect
+- Gateway:`192.168.4.1`
+- WAN:`192.168.1.123`
+  
+° Global:`Enable Port Forwarding on your router to access anywhere`
+
 # GPIO Connection 
 ```
 RELAY     ESP32 30P/38P
