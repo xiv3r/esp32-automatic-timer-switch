@@ -1005,7 +1005,6 @@ void setMDNSHostname(const char* hostname) {
 // =============================================================================
 
 void setup() {
-    delay(5000);
 
     // Safe relay state first - ensure all relays are OFF at startup
     // CRITICAL for ESP32-C3: GPIO 2, 8, 9 are strapping pins and must be
