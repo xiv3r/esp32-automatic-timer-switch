@@ -37,7 +37,7 @@ firmware  : 0x10000
 
 # GPIO Connections
 ```
-16CH | ESP32-S3
+16CH | ESP32-C3
 VCC  => 5V
 IN1  => 0
 IN2  => 1
