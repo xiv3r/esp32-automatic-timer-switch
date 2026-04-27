@@ -16,7 +16,14 @@ This is ESP32 smart relay controller, designed to manage 16 independent relay ch
 - NTPClient
 
 # Installation
-- Download the [flasher](https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/flasher) and [firmware](https://github.com/xiv3r/esp32-automatic-timer-switch/raw/refs/heads/main/esp32-16ch-firmware-0x0.bin) then flash using `0x0` offset
+- Download the [flasher](https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/flasher) and firmware and then flash.
+
+- offset address
+```
+bootloader: 0x1000
+partitions: 0x8000
+firmware  : 0x10000
+```
 
 # WiFi Key
 - WiFi SSID: `ESP32_16CH_Timer_Switch`
