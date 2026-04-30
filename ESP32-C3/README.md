@@ -21,7 +21,7 @@ firmware  : 0x10000
 # Wifi Key
 - Wifi Name:`ESP32_C3_16CH_Timer_Switch`
 
-- Password:`ESP32-C3-admin`
+- Password:`ESP32C3-admin`
 
 # Setup
 - Go to `192.168.4.1/wifi` then connect your ESP32-S3 to your Home Wifi
