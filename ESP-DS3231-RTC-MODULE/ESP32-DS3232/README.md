@@ -64,3 +64,12 @@ IN17 _____ 33
 IN18 _____ 32
 GND  _____ GND
 ```
+
+# DS3231 RTC GPIO
+```
+RTC | ESP32 30/38P
+SDA → 21
+SCL → 22
+VCC → 3.3V
+GND → GND
+```
