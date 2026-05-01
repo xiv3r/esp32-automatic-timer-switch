@@ -10,7 +10,7 @@ This is ESP32 smart relay controller, designed to manage 16 independent relay ch
 - 5v 5-8a Power supply
   
 `Optional`
-- 5vDC Battery (Maintain Power and Timer)
+- 5v50Ah DC Battery (Maintain Power and Timer)
 
 # Arduino Libraries
 - ArduinoJson
@@ -44,7 +44,7 @@ firmware: 0x0
   
 ° Global:`Enable Port Forwarding on your router to access anywhere`
 
-# GPIO Connection 
+# 20 Channel GPIO Connection 
 ```
 RELAY     ESP32 30P/38P
 VCC  _____ 5VIN 
