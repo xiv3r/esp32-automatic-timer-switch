@@ -1,14 +1,15 @@
 # Requirements
-- 5V 1-16 Channel Relay
-- ESP32-S3 Dev Module
-- 2pcs Dupont Wires
-- 5V 5A Power Supply
+- 5V 1-26 Channel Relay
+- ESP32-S3 N16R8 Wroom-1 Dev Module
+- Dupont Wires
+- 5V 5-10A Power Supply
 
 `Optional`
 - 5V Battery (Maintain Time)
 
 # Libraries
 - ArduinoJson
+- Preferences 
 - NTPClient
 
 # Installation
@@ -19,7 +20,7 @@ partitions: 0x8000
 firmware  : 0x10000
 ```
 # Wifi Key
-- Wifi Name:`ESP32_S3_16CH_Timer_Switch`
+- Wifi Name:`ESP32_S3_26CH_Timer_Switch`
 
 - Password:`ESP32S3-admin`
 
@@ -28,7 +29,7 @@ firmware  : 0x10000
 
 # Access
 ° Direct Access
-- mDNS:`esp32-s3-16ch-timer.local`
+- mDNS:`esp32-s3-26ch-timer.local`
 - Captive Portal: Auto redirect
 - Gateway:`192.168.4.1`
 - WAN:`192.168.1.123`
