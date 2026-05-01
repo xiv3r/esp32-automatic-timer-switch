@@ -7,6 +7,7 @@
 
 # Libraries
 - ArduinoJson
+- Preferences 
 - NTPClient
 - [RTCLib 1.14.1](https://codeload.github.com/adafruit/RTClib/zip/refs/tags/1.14.1)
 
@@ -73,3 +74,5 @@ SCL  → 9
 VCC → 3.3V
 GND → GND
 ```
+
+# Full Features
