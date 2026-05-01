@@ -66,10 +66,33 @@ NTPClient timeClient(ntpUDP, NTP_SERVERS[0], 28800, 3600000UL);
 
 // ─── Relay config ────────────────────────────────────────────────────────────
 #define NUM_RELAYS 26
-const int  relayPins[NUM_RELAYS] = { 
-    1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 
-    12, 13, 14, 15, 16, 17, 18, 21, 
-    38, 39, 40, 41, 42, 45, 47, 48
+const int  relayPins[NUM_RELAYS] = {
+4,  // Relay 1
+5,  // Relay 2
+6,  // Relay 3
+7,  // Relay 4
+15, // Relay 5
+16, // Relay 6
+17, // Relay 7
+18, // Relay 8
+8,  // Relay 9
+9,  // Relay 10
+10, // Relay 11
+11, // Relay 12
+12, // Relay 13
+13, // Relay 14
+14, // Relay 15
+1,  // Relay 16
+2,  // Relay 17
+42, // Relay 18
+41, // Relay 19
+40, // Relay 20
+39, // Relay 21
+38, // Relay 22
+45, // Relay 23
+48, // Relay 24
+47, // Relay 25
+21  // Relay 26
 };
 const bool relayActiveLow = true;
 
