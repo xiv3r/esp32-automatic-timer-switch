@@ -79,128 +79,259 @@ GND  _____ GND
 # Full Features
 </summary>
 
-## Core Features
-```
-· 16 independent relays with configurable GPIO pins
-· Manual override mode (ON/OFF/Auto) via web interface
-· 8 schedules per relay for automated control
-· Flexible scheduling:
-  · Normal schedules (start < stop within same day)
-  · Overnight schedules (start > stop, spans midnight)
-  · Always-ON mode (start = stop)
-· Custom naming for each relay (up to 15 characters)
-· Active-low relay support (configurable)
-```
+## 🔌 Hardware Features
 
-## WiFi Connectivity
-```
-· Dual-mode operation: Simultaneous STA (client) + AP (access point)
-· Non-blocking WiFi reconnection with exponential backoff
-· Automatic reconnect (up to 10 attempts, then 5-minute cooldown)
-· WiFi network scanner (async, non-blocking)
-· Captive portal for easy initial setup
-```
+### Relay Configuration
+- **20 Independent Channels** controlling 20 relays via dedicated GPIO pins
+- **Active-Low Operation** support (configurable)
+- **Pin Mapping**: GPIOs 15, 2, 4, 16, 17, 5, 18, 19, 21, 3, 1, 22, 23, 13, 14, 27, 26, 25, 33, 32
+- **Safe Boot State**: All relays default to OFF during initialization
 
-## Time Management
-```
-· NTP synchronization with multiple fallback servers:
-  · ph.pool.ntp.org → pool.ntp.org → time.nist.gov → time.google.com
-· Internal RTC with drift compensation (EWMA filter)
-· Configurable sync interval (1-24 hours)
-· Timezone support with GMT and DST offsets
-· Persistent time storage across reboots
-```
+---
 
-## Web Interface
-```
-· Responsive HTML5/CSS3 interface (mobile-friendly)
-· Five main pages:
-  1. Relays - Control and schedule management
-  2. WiFi - Network configuration and scanning
-  3. Time - NTP and timezone settings
-  4. AP - Access point configuration
-  5. System - Device info and maintenance
-· Real-time status indicators (WiFi, NTP, time)
-· Toast notifications for user feedback
-· Double-click editing for relay names
-```
+## ⏰ Scheduling & Timer Features
 
-## Network Services
-```
-· mDNS/Bonjour support (hostname.local access)
-· DNS server for captive portal functionality
-· RESTful JSON API for all operations
-· Configurable AP with:
-  · Channel selection (1-13)
-  · Hidden SSID option
-  · Password protection (8+ chars or open)
-```
+### Per-Relay Scheduling
+- **8 Independent Schedules** per relay channel
+- **Time-of-Day Control**: Precise start/stop times with second-level granularity
+- **Day-of-Week Selection**: Individual day toggles (Sun-Sat) with presets:
+  - Everyday (0x7F)
+  - Weekdays (0x3E) 
+  - Weekends (0x41)
+- **Day-of-Month Selection**: 31-day bitmap for monthly scheduling patterns
+- **Overnight Support**: Automatic handling of schedules spanning midnight (start > stop)
 
-## Configuration Storage
-```
-· Preferences/NVS for persistent storage
-· Versioned configuration (v3 main config + v4 extensions)
-· Separate extended config for advanced settings
-· Factory reset capability
-· Automatic corruption recovery
-```
+### Schedule States
+- **Standard Schedule**: Start time < Stop time (same-day operation)
+- **Overnight Schedule**: Start time > Stop time (spans midnight)
+- **24/7 Always ON**: Start time = Stop time with schedule enabled
 
-## API Endpoints
-```
-Endpoint Method Purpose
-/api/relays GET List all relays and schedules
-/api/relay/manual POST Set manual override
-/api/relay/reset POST Clear manual override
-/api/relay/save POST Save schedules
-/api/relay/name POST Update relay name
-/api/time GET Current time and status
-/api/wifi GET/POST WiFi config and status
-/api/wifi/scan POST/GET Network scanning
-/api/ntp GET/POST NTP configuration
-/api/ntp/sync POST Force NTP sync
-/api/ap GET/POST AP configuration
-/api/system GET System information
-/api/reset POST Restart device
-/api/factory-reset POST Factory reset
-```
+---
 
-## Safety Features
-```
-· Safe relay initialization (all OFF at boot)
-· Pin validation (ESP32-safe GPIOs only)
-· Configuration validation with magic numbers
-· Drift compensation bounds (0.90-1.10)
-· NTP epoch validation (reject invalid timestamps)
-```
+## 🌐 Network Features
 
-## Performance Optimizations
-```
-· Non-blocking state machines for WiFi and scans
-· Efficient JSON parsing with ArduinoJson
-· Memory-conscious design (~16KB JSON documents)
-· EWMA filtering for RTC drift compensation
-· Async WiFi scanning (doesn't block main loop)
-```
+### WiFi Connectivity
+- **Dual-Mode Operation**: Simultaneous AP + Station (AP_STA mode)
+- **Station Mode**: Connect to existing WiFi networks
+- **Automatic Reconnection**: Non-blocking reconnection with backoff strategy
+  - Maximum 10 reconnection attempts
+  - 5-minute cooldown after failed attempts
+- **WiFi Network Scanner**: Async scanning with timeout protection
+- **Signal Strength Display**: RSSI visualization in web interface
 
-## System Information Display
-```
-· STA IP address and connection status
-· AP IP address
-· Free heap memory
-· Uptime counter
-· WiFi RSSI with quality indicator
-· NTP sync status and age
-· Chip model and firmware version
-· mDNS hostname and status
-```
+### Access Point (AP)
+- **Built-in Hotspot**: ESP32_20CH_Timer_Switch (default)
+- **Customizable**: Configurable SSID, password, channel (1-13)
+- **Hidden SSID Support**: Option to hide network broadcast
+- **Open Network Support**: Passwordless operation available
+- **Captive Portal**: Automatic redirection for easy configuration
+  - Supports Android, iOS, Windows captive portal detection
+  - DNS-based redirection (port 53)
 
-## Special Features
-```
-· Overnight schedule detection with visual indicators
-· RSSI bars for WiFi signal strength
-· Automatic AP restart on configuration changes
-· mDNS service advertisement with metadata
-· Multiple captive portal probe paths (Apple, Microsoft, Android)
-· Schedule conflict resolution (first active schedule wins)
-```
+### mDNS (Bonjour/Avahi)
+- **Local Network Discovery**: `esp32-20ch-relay.local` (default)
+- **Dynamic Hostname**: Auto-generated or custom hostnames
+- **Service Advertisement**: HTTP service with metadata
+- **Hot Restart**: mDNS service restart without device reboot
+
+---
+
+## 🕐 Time Synchronization
+
+### NTP Client
+- **Primary Server**: `ph.pool.ntp.org` (default, configurable)
+- **Fallback Chain**: 
+  1. Custom/primary server
+  2. `pool.ntp.org`
+  3. `time.nist.gov`
+  4. `time.google.com`
+- **Automatic Failover**: Rotates through servers on failure
+- **Configurable Sync Interval**: 1-24 hours
+- **Manual Sync Trigger**: Force synchronization via web UI
+- **GMT Offset**: Configurable timezone offset (default: UTC+8/28800s)
+- **Daylight Saving**: Secondary offset for DST adjustments
+
+### Internal RTC
+- **Drift Compensation**: Adaptive algorithm with ±10% bounds
+- **Persistent Storage**: Epoch and drift saved to NVS
+- **Millisecond Precision**: Internal timekeeping between NTP syncs
+- **Graceful Degradation**: Continues operation during network outages
+
+---
+
+## 💾 Data Management
+
+### Preferences/NVS Storage
+- **Configuration Persistence**: All settings survive power cycles
+- **Version Migration**: Automatic schema updates (currently v5)
+- **Backward Compatibility**: Loads older configuration formats
+- **Factory Reset**: Complete NVS clearing option
+
+### Stored Configurations
+- **SystemConfig**: WiFi credentials, NTP settings, RTC state
+- **ExtConfig**: AP channel, sync interval, hidden SSID flag
+- **RelayConfigs**: 20× schedules with names and states
+- **Magic Number Validation**: Prevents corrupted data loading
+
+---
+
+## 🎛️ Control Features
+
+### Relay Control Modes
+- **Automatic Mode**: Schedule-based operation (default)
+- **Manual Override**: Direct ON/OFF control via web interface
+- **Named Relays**: Custom 15-character names (double-click to edit)
+
+### Web Interface Controls
+- **Per-Relay Buttons**: ON/OFF/Auto for each channel
+- **Bulk Schedule Editor**: Visual day/month toggles
+- **Real-time Status**: Live relay state indicators
+- **Toast Notifications**: Operation feedback messages
+
+---
+
+## 🌍 Web Interface
+
+### Responsive Design
+- **Mobile-First Layout**: Optimized for phones and tablets
+- **Adaptive Grid**: Auto-fill relay cards (340px minimum)
+- **Sticky Header**: Navigation always accessible
+- **Dark-Friendly**: High contrast color scheme
+
+### Pages & Sections
+1. **Relays Dashboard** (`/`)
+   - 20 relay cards with status badges
+   - Schedule editor per relay
+   - Manual control buttons
+   
+2. **WiFi Settings** (`/wifi`)
+   - Network scanner with RSSI bars
+   - Connection status display
+   - Credential management
+
+3. **Time Settings** (`/ntp`)
+   - NTP server configuration
+   - Timezone/GMT offset
+   - Sync interval control
+   - Manual sync trigger
+
+4. **AP Settings** (`/ap`)
+   - Hotspot SSID/password
+   - Channel selection
+   - Visibility toggle
+
+5. **System Info** (`/system`)
+   - Network diagnostics
+   - Resource monitoring
+   - Device restart/reset
+
+### Real-Time Updates
+- **1-Second Clock**: Live time display in header
+- **Status Indicators**: WiFi (green/red), NTP (green/yellow) dots
+- **Auto-Refresh**: Relay states update every 60 seconds
+
+---
+
+## 🔧 API Endpoints
+
+### Relay Management
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/relays` | GET | Get all relay states and schedules |
+| `/api/relay/manual` | POST | Set manual ON/OFF state |
+| `/api/relay/reset` | POST | Return to automatic mode |
+| `/api/relay/save` | POST | Save schedule configuration |
+| `/api/relay/name` | POST | Update relay name |
+
+### Network & System
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/time` | GET | Current time and sync status |
+| `/api/wifi` | GET/POST | WiFi configuration |
+| `/api/wifi/scan` | POST/GET | WiFi network scanning |
+| `/api/ntp` | GET/POST | NTP settings management |
+| `/api/ntp/sync` | POST | Force NTP synchronization |
+| `/api/ap` | GET/POST | Access point configuration |
+| `/api/mdns` | GET/POST | mDNS hostname management |
+| `/api/mdns/restart` | POST | Restart mDNS service |
+| `/api/system` | GET | System diagnostics |
+| `/api/reset` | POST | Restart device |
+| `/api/factory-reset` | POST | Full configuration erase |
+
+---
+
+## 🛡️ Safety & Reliability
+
+### Hardware Protection
+- **Safe Initialization**: All pins set to off state before setup
+- **Watchdog Friendly**: Non-blocking operations throughout
+- **Timeout Protection**: WiFi scan (10s), connection (15s), NTP retry intervals
+
+### Software Resilience
+- **Configuration Validation**: Magic number checking prevents corruption
+- **Graceful Fallbacks**: Default values when configs are invalid
+- **Memory-Safe JSON**: StaticJsonDocument with appropriate sizes
+- **Error Handling**: Comprehensive try-catch across API handlers
+
+---
+
+## 📊 Monitoring & Diagnostics
+
+### System Metrics
+- **Free Heap Memory**: Real-time RAM usage
+- **Uptime Counter**: Device runtime tracking
+- **WiFi RSSI**: Signal strength with quality descriptions
+- **NTP Sync Age**: Time since last synchronization
+- **Chip Information**: ESP32 model identification
+
+### Debug Features
+- **Structured Logging**: Clear magic numbers and version tracking
+- **State Machine States**: WifiConnState for connection debugging
+- **Scan Status**: Async scan progress reporting
+- **Drift Monitoring**: RTC compensation factor tracking
+
+---
+
+## 🔄 Advanced Features
+
+### Power Management
+- **WiFi Power Save**: Implicit through non-blocking operations
+- **Connection Backoff**: Exponential-like retry delays
+- **Resource Optimization**: Minimal polling intervals (100ms RTC, 5s WiFi check)
+
+### Security
+- **Password Protection**: Configurable AP authentication (WPA2)
+- **Hidden SSID**: Reduce network visibility
+- **No Hardcoded Credentials**: All settings user-configurable
+- **Captive Portal Isolation**: Limited attack surface
+
+### Extensibility
+- **JSON API**: Easy integration with home automation systems
+- **mDNS Discovery**: Zero-configuration network finding
+- **Version Tracking**: Forward-compatible configurations
+- **Modular Design**: Clear separation of concerns in code
+
+---
+
+## 📱 User Experience
+
+### Setup Flow
+1. Power on → Default AP activates
+2. Connect to `ESP32_20CH_Timer_Switch`
+3. Captive portal redirects to configuration
+4. Configure WiFi, timezone, schedules
+5. Device connects to network and syncs time
+
+### Daily Operation
+- Schedules run automatically
+- Manual overrides via web/mobile browser
+- Status monitoring at a glance
+- Zero-touch after initial configuration
+
+### Recovery Options
+- Factory reset via web interface
+- Automatic reconnection after WiFi drops
+- Fallback AP always available
+- RTC continues during network outages
+
 </details>
