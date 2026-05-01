@@ -78,18 +78,6 @@ GND → GND
 # Full Features
 
 ```
-Hardware Specifications
-
-Feature Detail
-MCU ESP32-S3
-Channels 24 relay outputs
-RTC Module DS3231 (I2C: GPIO8=SDA, GPIO9=SCL)
-Relay GPIO Pins 4, 5, 6, 7, 15, 16, 17, 18, 10, 11, 12, 13, 14, 1, 2, 42, 41, 40, 39, 38, 45, 48, 47, 21
-Relay Logic Configurable active-low (default)
-Storage NVS (Non-Volatile Storage) via Preferences
-
----
-
 Core Features
 
 1. Relay Control & Scheduling
