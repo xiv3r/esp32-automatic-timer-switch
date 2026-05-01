@@ -1,11 +1,10 @@
-
 # Requirements
-- ESP32 30P/38P Pins
+- ESP32 38P Pins
 - 1 -> 18 Channel Relay
 - DS3232 RTC Module
 - Female Dupont Wire
 - Home Wifi for NTP/RTC sync
-- 5v 5a Power supply
+- 5v 5-8a Power supply
 
 # Arduino Libraries
 - ArduinoJson
@@ -42,7 +41,7 @@ firmware  : 0x0
 
 # 18-Channel GPIO Connection 
 ```
-RELAY     ESP32 30P/38P
+RELAY     ESP32 38P
 VCC  _____ 5VIN 
 IN1  _____ 15
 IN2  _____ 2
