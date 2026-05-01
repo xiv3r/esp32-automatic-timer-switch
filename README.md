@@ -1,18 +1,20 @@
 # About
 This is ESP32 smart relay controller, designed to manage 16 independent relay channels with advanced scheduling capabilities. The system operates as a standalone device with its own Wi-Fi access point and web-based control interface, making it suitable for industrial automation, home automation, greenhouse control, lighting systems, and other applications requiring precise timed control of multiple electrical circuits.
 
+
 # Requirements
 - ESP32 30P/38P Pins
-- 1 -> 16 Channel Relay
+- 1 -> 20 Channel Relay
 - Female Dupont Wire
 - Home Wifi for NTP/RTC sync
-- 5v 5a Power supply
+- 5v 5-8a Power supply
   
 `Optional`
 - 5vDC Battery (Maintain Power and Timer)
 
 # Arduino Libraries
 - ArduinoJson
+- Preferences
 - NTPClient
 
 # Installation
@@ -20,13 +22,11 @@ This is ESP32 smart relay controller, designed to manage 16 independent relay ch
 
 - offset address
 ```
-bootloader: 0x1000
-partitions: 0x8000
-firmware  : 0x10000
+firmware: 0x0
 ```
 
 # WiFi Key
-- WiFi SSID: `ESP32_16CH_Timer_Switch`
+- WiFi SSID: `ESP32_20CH_Timer_Switch`
 - Password: `ESP32-admin`
 
 # Activation
@@ -37,7 +37,7 @@ firmware  : 0x10000
 
 # Access
 ° Direct Access
-- mDNS:`esp32-16ch-timer.local`
+- mDNS:`esp32-20ch-timer.local`
 - Captive Portal: Auto redirect
 - Gateway:`192.168.4.1`
 - WAN:`192.168.1.123`
@@ -48,22 +48,26 @@ firmware  : 0x10000
 ```
 RELAY     ESP32 30P/38P
 VCC  _____ 5VIN 
-IN1  _____ 16
-IN2  _____ 17
-IN3  _____ 18
-IN4  _____ 19
-IN5  _____ 21
-IN6  _____ 22
-IN7  _____ 23
-IN8  _____ 25
-IN9  _____ 26
-IN10 _____ 27
-IN11 _____ 32
-IN12 _____ 33
-IN13 _____ 13
-IN14 _____ 14
-IN15 _____ 4
-IN16 _____ 5
+IN1  _____ 15
+IN2  _____ 2
+IN3  _____ 4
+IN4  _____ 16
+IN5  _____ 17
+IN6  _____ 5
+IN7  _____ 18
+IN8  _____ 19
+IN9  _____ 21
+IN10 _____ RX 
+IN11 _____ TX
+IN12 _____ 22
+IN13 _____ 23
+IN14 _____ 13
+IN15 _____ 14
+IN16 _____ 27
+IN17 _____ 26
+IN18 _____ 25
+IN19 _____ 33
+IN20 _____ 32
 GND  _____ GND
 ```
 
