@@ -3,7 +3,7 @@ This is ESP32 smart relay controller, designed to manage 16 independent relay ch
 
 
 # Requirements
-- ESP32 30P/38P Pins
+- ESP32 38P Pins
 - 1 -> 20 Channel Relay
 - Female Dupont Wire
 - Home Wifi for NTP/RTC sync
@@ -46,7 +46,7 @@ firmware: 0x0
 
 # 20 Channel GPIO Connection 
 ```
-RELAY     ESP32 30P/38P
+RELAY    ESP32 38P
 VCC  _____ 5VIN 
 IN1  _____ 15
 IN2  _____ 2
