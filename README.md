@@ -335,3 +335,32 @@ GND  _____ GND
 - RTC continues during network outages
 
 </details>
+
+# Other ESP32 Board
+- Changes for sketch.ino
+```
+#define NUM_RELAYS 20 // Change 20 to number of relays supported by your board 
+
+const int relayPins[NUM_RELAYS] = { // Reduce or Add GPIO based on your ESP32 board
+ 15, // IN1
+  2,  // IN2
+  4,  // IN3
+ 16, // IN4
+ 17, // IN5
+  5,  // IN6
+ 18, // IN7
+ 19, // IN8
+ 21, // IN9
+  3,  // IN10 (RX)
+  1,  // IN11 (TX)
+ 22, // IN12
+ 23, // IN13
+ 13, // IN14
+ 14, // IN15
+ 27, // IN16
+ 26, // IN17
+ 25, // IN18
+ 33, // IN19
+ 32  // IN20
+};
+```
