@@ -337,7 +337,7 @@ GND  _____ GND
 </details>
 
 ## Support for other ESP32 board 
-- Find and change from sketch.ino
+- Find and change from [esp32_generic_sketch.ino](https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/esp32-generic-sketch.ino)
 ```
 #define NVS_NAMESPACE "relay20"  // changed number supported by your board 
 ```
