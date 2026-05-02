@@ -336,13 +336,13 @@ GND  _____ GND
 
 </details>
 
-## Support for other ESP32 board 
-- Find and change from [esp32_generic_sketch.ino](https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/esp32-generic-sketch.ino)
+## ESP32 All Board Support (Models & Variations)
+- Find and change from [esp32_generic_sketch.ino](https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/esp32-generic-sketch.ino) before compiling
 ```
-#define NVS_NAMESPACE "relay20"  // changed number supported by your board 
+#define NVS_NAMESPACE "relay20"  // changed 20 to the number relays supported by your board 
 ```
 ```
-#define NUM_RELAYS 20 // Change 20 to number of relays supported by your board 
+#define NUM_RELAYS 20 // Change 20 to the number of relays supported by your board 
 const int relayPins[NUM_RELAYS] = { // Reduce or Add GPIO based on your ESP32 board
  15, // IN1
   2,  // IN2
@@ -367,5 +367,5 @@ const int relayPins[NUM_RELAYS] = { // Reduce or Add GPIO based on your ESP32 bo
 };
 ```
 ```
-MDNS.addServiceTxt("http", "tcp", "channels", "20");  // changed number supported by your board 
+MDNS.addServiceTxt("http", "tcp", "channels", "20");  // changed 20 to number of relays supported by your board 
 ```
