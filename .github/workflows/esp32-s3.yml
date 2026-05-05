@@ -1,4 +1,4 @@
-name: Build ESP32-S3
+name: Build ESP32-S3 Firmware
 
 on:
   workflow_dispatch:
@@ -11,7 +11,7 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Install Arduino-cli
       run: |
@@ -28,7 +28,7 @@ jobs:
         git clone --depth 1 --branch 1.14.1 https://github.com/adafruit/RTClib.git ~/Arduino/libraries/RTClib
         
         cd ESP32-S3
-        arduino-cli compile --fqbn esp32:esp32:esp32s3 --output-dir firmware .
+        arduino-cli compile --fqbn esp32:esp32:esp32s3:FlashSize=16M,PSRAM=opi --output-dir firmware .
          
     - name: Determine release tag
       id: get_tag
@@ -41,7 +41,7 @@ jobs:
         echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
 
     - name: Delete existing release assets
-      uses: actions/github-script@v7
+      uses: actions/github-script@v8
       with:
         script: |
           const { data: releases } = await github.rest.repos.listReleases({
@@ -80,7 +80,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Upload files to existing release
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v3
       with:
         tag_name: ${{ steps.get_tag.outputs.tag_name }}
         files: |
