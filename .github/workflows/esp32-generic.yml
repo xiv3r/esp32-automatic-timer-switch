@@ -19,7 +19,7 @@ jobs:
         arduino-cli config init
         arduino-cli config add board_manager.additional_urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
         arduino-cli core update-index
-        arduino-cli core install esp32:esp32
+        arduino-cli core install esp32:esp32@1.0.3
         
         # Install libraries
         arduino-cli lib install "Preferences"
@@ -27,7 +27,7 @@ jobs:
         arduino-cli lib install "NTPClient"
         git clone --depth 1 --branch 1.14.1 https://github.com/adafruit/RTClib.git ~/Arduino/libraries/RTClib
         
-        arduino-cli compile --fqbn esp32:esp32:esp32 --output-dir firmware .
+        arduino-cli compile --fqbn esp32:esp32:esp32:Version=1.0.3 --output-dir firmware .
         
     - name: Determine release tag
       id: get_tag
