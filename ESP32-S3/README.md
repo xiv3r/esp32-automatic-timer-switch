@@ -58,5 +58,3 @@ IN15 => 15
 IN16 => 16
 GND  => GND
 ```
-
-# Full Features
