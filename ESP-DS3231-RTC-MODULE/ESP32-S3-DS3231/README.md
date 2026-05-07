@@ -67,4 +67,3 @@ VCC → 3.3V
 GND → GND
 ```
 
-# Full Features
