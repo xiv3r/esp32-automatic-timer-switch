@@ -1,5 +1,5 @@
 # Requirements
-- 5V 1-24 Channel Relay
+- 5V 1-16 Channel Relay
 - ESP32-S3 N16R8 Wroom-1 Dev Module
 - DS3231 RTC Module
 - 2pcs Dupont Wires
@@ -19,7 +19,7 @@ partitions: 0x8000
 firmware  : 0x10000
 ```
 # Wifi Key
-- Wifi Name:`ESP32_S3_24CH_Timer_Switch`
+- Wifi Name:`ESP32_S3_16CH_Timer_Switch`
 
 - Password:`ESP32S3-admin`
 
@@ -37,32 +37,24 @@ firmware  : 0x10000
 
 # GPIO Connections
 ```
-24CH | ESP32-S3 N16R8
+16CH | ESP32-S3 N16R8
 VCC  => 5V
-IN1  => 4
-IN2  => 5
-IN3  => 6
-IN4  => 7
-IN5  => 15
-IN6  => 16
-IN7  => 17
-IN8  => 18
-IN9  => 10
-IN10 => 11
-IN11 => 12
-IN12 => 13
-IN13 => 14
-IN14 => 1
-IN15 => 2
-IN16 => 42
-IN17 => 41
-IN18 => 40
-IN19 => 39
-IN20 => 38
-IN21 => 45
-IN22 => 48
-IN23 => 47
-IN24 => 21
+IN1  => 1
+IN2  => 2
+IN3  => 3
+IN4  => 4
+IN5  => 5
+IN6  => 6
+IN7  => 7
+IN8  => 10
+IN9  => 11
+IN10 => 12
+IN11 => 13
+IN12 => 14
+IN13 => 15
+IN14 => 16
+IN15 => 17
+IN16 => 18
 GND  => GND
 ```
 
