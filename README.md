@@ -1,7 +1,3 @@
-# About
-This is ESP32 smart relay controller, designed to manage 20 independent relay channels with advanced scheduling capabilities. The system operates as a standalone device with its own Wi-Fi access point and web-based control interface, making it suitable for industrial automation, home automation, greenhouse control, lighting systems, and other applications requiring precise timed control of multiple electrical circuits.
-
-
 # Requirements
 - ESP32 38P Pins
 - 1 -> 16 Channel 5V Relay
