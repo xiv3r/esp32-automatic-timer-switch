@@ -69,8 +69,8 @@ IN16 _____ 32
 GND  _____ GND
 ```
 
-<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/">
-<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/pic1.png">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/pic2.png">
 
 <details><summary>
   
