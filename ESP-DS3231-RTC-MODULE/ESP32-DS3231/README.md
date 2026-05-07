@@ -72,5 +72,3 @@ SCL → 22
 VCC → 3.3V
 GND → GND
 ```
-
-# Full Features 
