@@ -41,7 +41,7 @@ firmware  : 0x10000
   
 ° Global:`Enable Port Forwarding on your router to access anywhere`
 
-# 18-Channel GPIO Connection 
+# 16-Channel GPIO Connection 
 ```
 RELAY    ESP32 38P
 VCC  _____ 5VIN 
