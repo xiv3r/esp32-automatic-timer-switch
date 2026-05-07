@@ -1,5 +1,5 @@
 # Requirements
-- 5V 1-26 Channel Relay
+- 5V 1-16 Channel Relay
 - ESP32-S3 N16R8 Wroom-1 Dev Module
 - Dupont Wires
 - 5V 5-10A Power Supply
@@ -20,16 +20,16 @@ partitions: 0x8000
 firmware  : 0x10000
 ```
 # Wifi Key
-- Wifi Name:`ESP32_S3_26CH_Timer_Switch`
+- Wifi Name:`ESP32_S3_16CH_Timer_Switch`
 
-- Password:`ESP32S3-admin`
+- Password:`ESP32-admin`
 
 # Setup
 - Go to `192.168.4.1/wifi` then connect your ESP32-S3 to your Home Wifi
 
 # Access
 ° Direct Access
-- mDNS:`esp32-s3-26ch-timer.local`
+- mDNS:`esp32-s3-16ch-timer.local`
 - Captive Portal: Auto redirect
 - Gateway:`192.168.4.1`
 - WAN:`192.168.1.123`
@@ -40,32 +40,22 @@ firmware  : 0x10000
 ```
 26CH | ESP32-S3
 VCC  => 5V
-IN1  => 4
-IN2  => 5
-IN3  => 6
-IN4  => 7
-IN5  => 15
-IN6  => 16
-IN7  => 17
-IN8  => 18
-IN9  => 8
-IN10 => 9
-IN11 => 10
-IN12 => 11
-IN13 => 12
-IN14 => 13
-IN15 => 14
-IN16 => 1
-IN17 => 2
-IN18 => 42
-IN19 => 41
-IN20 => 40
-IN21 => 39
-IN22 => 38
-IN23 => 45
-IN24 => 48
-IN25 => 47
-IN26 => 21
+IN1  => 1
+IN2  => 2
+IN3  => 3
+IN4  => 4
+IN5  => 5
+IN6  => 6
+IN7  => 7
+IN8  => 8
+IN9  => 9
+IN10 => 10
+IN11 => 11
+IN12 => 12
+IN13 => 13
+IN14 => 14
+IN15 => 15
+IN16 => 16
 GND  => GND
 ```
 
