@@ -28,7 +28,7 @@ firmware  : 0x10000
 
 # Access
 ° Direct Access
-- mDNS:`esp32-s3-24ch-timer.local`
+- mDNS:`esp32-s3-16ch-timer.local`
 - Captive Portal: Auto redirect
 - Gateway:`192.168.4.1`
 - WAN:`192.168.1.123`
