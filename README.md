@@ -12,6 +12,7 @@
 - ArduinoJson
 - Preferences
 - NTPClient
+- RTClib 1.14.1
 
 # Installation
 - Download the [flasher](https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/flasher) and firmware and then flash.
