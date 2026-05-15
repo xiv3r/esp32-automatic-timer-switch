@@ -6,7 +6,7 @@
 - 5v 5-8a Power supply
   
 `Optional`
-- 5v50Ah DC Battery (Maintain Power and Timer)
+- 5v UPS (Maintain Power and Timer)
 
 # Arduino Libraries
 - ArduinoJson
