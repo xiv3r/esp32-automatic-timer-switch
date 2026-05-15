@@ -1,7 +1,7 @@
 # Requirements
 - 5V 1-16 Channel Relay
-- ESP32-S3 N16R8 Wroom-1 Dev Module
-- Dupont Wires
+- ESP32-S3 N16R8 Wroom-1 Dev Module (16mb flash 8mb psram)
+- F-F Dupont Wires
 - 5V 5-10A Power Supply
 
 `Optional`
@@ -38,7 +38,7 @@ firmware  : 0x10000
 
 # GPIO Connections
 ```
-26CH | ESP32-S3
+16CH | ESP32-S3
 VCC  => 5V
 IN1  => 1
 IN2  => 2
@@ -55,6 +55,6 @@ IN12 => 12
 IN13 => 13
 IN14 => 14
 IN15 => 15
-IN16 => 16
+IN16 => 21
 GND  => GND
 ```
