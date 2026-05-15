@@ -5,7 +5,7 @@
 - 5V 5-10A Power Supply
 
 `Optional`
-- 5V Battery (Maintain Time)
+- 5V UPS (Maintain Time)
 
 # Libraries
 - ArduinoJson
