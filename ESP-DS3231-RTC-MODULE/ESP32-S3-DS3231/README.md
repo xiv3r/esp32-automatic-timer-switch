@@ -46,14 +46,14 @@ IN4  => 4
 IN5  => 5
 IN6  => 6
 IN7  => 7
-IN8  => 10
-IN9  => 11
-IN10 => 12
-IN11 => 13
-IN12 => 14
-IN13 => 15
-IN14 => 16
-IN15 => 17
+IN8  => 8
+IN9  => 9
+IN10 => 10
+IN11 => 11
+IN12 => 12
+IN13 => 13
+IN14 => 14
+IN15 => 15
 IN16 => 18
 GND  => GND
 ```
@@ -61,8 +61,8 @@ GND  => GND
 # DS3231 RTC Module GPIO
 ```
 RTC  |  ESP32-S3 N16R8 
-SDA  → 8
-SCL  → 9
+SDA  → 16
+SCL  → 17
 VCC → 3.3V
 GND → GND
 ```
