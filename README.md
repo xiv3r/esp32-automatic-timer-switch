@@ -34,6 +34,9 @@ firmware: 0x10000
 # Relay Name
 - Double click relay name to edit
 
+# GMT offset (your country time)
+- ⚠️ Search your country `gmt offsets in seconds` and paste it on the Time -> GMT Offset
+
 # Access
 ° Direct Access
 - mDNS:`esp32-16ch-timer.local`
