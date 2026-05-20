@@ -1,3 +1,6 @@
+## ESP8266
+👉 https://github.com/xiv3r/esp8266-automatic-timer-switch
+
 # Requirements
 - ESP32 38P Pins
 - 1 -> 16 Channel 5V Relay
