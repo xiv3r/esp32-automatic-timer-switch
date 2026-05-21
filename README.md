@@ -1,4 +1,4 @@
-## ESP8266
+# ESP8266
 👉 https://github.com/xiv3r/esp8266-automatic-timer-switch
 
 # Requirements
@@ -12,7 +12,7 @@
 `Optional`
 - 5v UPS (Maintain Power and Timer)
 
-# Arduino Libraries
+# Libraries
 - ArduinoJson
 - Preferences (build-in)
 - NTPClient
@@ -35,11 +35,12 @@ firmware: 0x10000
 # Activation
 - Go to `wifi settings` and connect to your home wifi after the NTP is synchronized everything will work
 
-# Relay Name
+# Relay Naming 
 - Double click relay name to edit
 
-# GMT offset (your country time)
-- ⚠️ Search your country `gmt offsets in seconds` and paste it on the Time -> GMT Offset
+# GMT offset
+> ⚠️ Set to your country time
+- Search your country `gmt offsets in seconds` and paste it in the Time -> GMT Offset
 
 # Access
 ° Direct Access
