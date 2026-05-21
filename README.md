@@ -6,7 +6,7 @@
 - DS3231 RTC Module (optional)
 - 1 -> 16 Channel 5V Relay
 - Female Dupont Wire
-  Stable Wifi for NTP/RTC sync
+- Stable Wifi for NTP/RTC sync
 - 5v 3-5a Power supply
   
 `Optional`
