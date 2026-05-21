@@ -3,17 +3,18 @@
 
 # Requirements
 - ESP32 38P Pins
+- DS3231 RTC Module (optional)
 - 1 -> 16 Channel 5V Relay
 - Female Dupont Wire
-- Home Wifi for NTP/RTC sync
-- 5v 5-8a Power supply
+  Stable Wifi for NTP/RTC sync
+- 5v 3-5a Power supply
   
 `Optional`
 - 5v UPS (Maintain Power and Timer)
 
 # Arduino Libraries
 - ArduinoJson
-- Preferences
+- Preferences (build-in)
 - NTPClient
 - RTClib 1.14.1
 
@@ -49,9 +50,15 @@ firmware: 0x10000
   
 ° Global:`Enable Port Forwarding on your router to access anywhere`
 
+# Reset
+- Hold BOOT button for 5 seconds
+
+# Restart
+- Press EN button
+
 # 16 Channel GPIO Connection 
 ```
-RELAY    ESP32 38P
+RELAY  |  ESP32 38P
 VCC  _____ 5VIN 
 IN1  _____ 15
 IN2  _____ 2
@@ -70,6 +77,14 @@ IN14 _____ 25
 IN15 _____ 33
 IN16 _____ 32
 GND  _____ GND
+```
+# DS3231 GPIO
+```
+DS3231 | ESP32
+VCC → 3.3V
+SDA → 21
+SCL → 22
+GND → GND
 ```
 
 <img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/pic1.png">
