@@ -23,7 +23,6 @@ firmware  : 0x10000
 ```
 # Wifi Key
 - Wifi Name:`ESP32_S3_16CH_Timer_Switch`
-
 - Password:`ESP32-admin`
 
 # Setup
@@ -37,6 +36,9 @@ firmware  : 0x10000
 - WAN:`192.168.1.123`
   
 ° Global:`Enable esp32 s3 Port Forwarding on your router to access anywhere`
+
+# Reset
+- Hold BOOT button for 5 seconds
 
 # GPIO Connections
 ```
