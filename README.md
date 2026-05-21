@@ -56,7 +56,7 @@ firmware: 0x10000
 # Restart
 - Press EN button
 
-# 16 Channel GPIO Connection 
+# 16 CHANNEL GPIO Connection 
 ```
 RELAY  |  ESP32 38P
 VCC  _____ 5VIN 
@@ -78,7 +78,7 @@ IN15 _____ 33
 IN16 _____ 32
 GND  _____ GND
 ```
-# DS3231 GPIO
+# DS3231 GPIO Connection 
 ```
 DS3231 | ESP32
 VCC → 3.3V
@@ -87,8 +87,9 @@ SCL → 22
 GND → GND
 ```
 
-<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/pic1.png">
-<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/pic2.png">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/img1.png">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/img2.png">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/img3.png">
 
 <details><summary>
   
