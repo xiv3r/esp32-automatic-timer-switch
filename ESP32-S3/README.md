@@ -2,7 +2,7 @@
 - 5V 1-16 Channel Relay
 - ESP32-S3 N16R8 (16mb flash 8mb ram)
 - DS3231 RTC Module
-- 2pcs F-F Dupont Wires
+- F-F Dupont Wires
 - Stabe Wifi connection
 - 5V 3-5A Power Supply
 
@@ -44,23 +44,22 @@ firmware  : 0x10000
 ```
 16CH | ESP32-S3 N16R8
 VCC  => 5V
-IN1  => 1
-IN2  => 2
-IN3  => 3
-IN4  => 4
-IN5  => 5
-IN6  => 6
-IN7  => 7
-IN8  => 8
-IN9  => 9
-IN10 => 10
-IN11 => 11
-IN12 => 12
-IN13 => 13
-IN14 => 14
-IN15 => 15
-IN16 => 18
-GND  => GND
+IN1  _____ 4   Relay 1
+IN2  _____ 5   Relay 2
+IN3  _____ 18  Relay 3
+IN4  _____ 21  Relay 4
+IN5  _____ 33  Relay 5
+IN6  _____ 34  Relay 6
+IN7  _____ 35  Relay 7
+IN8  _____ 36  Relay 8
+IN9  _____ 37  Relay 9
+IN10 _____ 38  Relay 10
+IN11 _____ 39  Relay 11
+IN12 _____ 40  Relay 12
+IN13 _____ 41  Relay 13
+IN14 _____ 42  Relay 14
+IN15 _____ 43  Relay 15
+IN16 _____ 44  Relay 16
 ```
 
 # DS3231 RTC Module GPIO
