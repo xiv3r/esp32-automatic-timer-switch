@@ -61,30 +61,30 @@ firmware: 0x10000
 ```
 RELAY  |  ESP32 38P
 VCC  _____ 5VIN 
-IN1  _____ 15
-IN2  _____ 2
-IN3  _____ 4
-IN4  _____ 5
-IN5  _____ 18
-IN6  _____ 19
-IN7  _____ 3
-IN8  _____ 1
-IN9  _____ 23
-IN10 _____ 13
-IN11 _____ 14
-IN12 _____ 27
-IN13 _____ 26
-IN14 _____ 25
-IN15 _____ 33
-IN16 _____ 32
+IN1  _____ 4   Relay 1
+IN2  _____ 5   Relay 2
+IN3  _____ 18  Relay 3
+IN4  _____ 21  Relay 4
+IN5  _____ 33  Relay 5
+IN6  _____ 34  Relay 6
+IN7  _____ 35  Relay 7
+IN8  _____ 36  Relay 8
+IN9  _____ 37  Relay 9
+IN10 _____ 38  Relay 10
+IN11 _____ 39  Relay 11
+IN12 _____ 40  Relay 12
+IN13 _____ 41  Relay 13
+IN14 _____ 42  Relay 14
+IN15 _____ 43  Relay 15
+IN16 _____ 44  Relay 16
 GND  _____ GND
 ```
 # DS3231 GPIO Connection 
 ```
 DS3231 | ESP32
 VCC → 3.3V
-SDA → 21
-SCL → 22
+SDA → 16
+SCL → 17
 GND → GND
 ```
 
