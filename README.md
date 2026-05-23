@@ -3,18 +3,18 @@
 
 # Requirements
 - ESP32 38P Pins
-- DS3231 RTC Module (optional)
+- DS3231 RTC Module (recommended)
 - 1 -> 16 Channel 5V Relay
-- Female Dupont Wire
-- Stable Wifi for NTP/RTC sync
+- Female to Female Dupont Wire
+- Stable Wifi Connection for NTP/RTC sync
 - 5v 3-5a Power supply
   
 `Optional`
-- 5v UPS (Maintain Power and Timer)
+- 5v UPS (Maintain RTC Time without DS3231)
 
 # Libraries
 - ArduinoJson
-- Preferences (build-in)
+- Preferences (built-in)
 - NTPClient
 - RTClib 1.14.1
 
@@ -23,9 +23,9 @@
 
 - offset address
 ```
-bootloader: 0x1000
-partition: 0x8000
-firmware: 0x10000
+bootloader : 0x1000
+partition  : 0x8000
+firmware   : 0x10000
 ```
 
 # WiFi Key
@@ -91,6 +91,8 @@ GND → GND
 <img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/img1.png">
 <img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/img2.png">
 <img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/img3.png">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/img4.png">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/img5.png">
 
 <details><summary>
   
