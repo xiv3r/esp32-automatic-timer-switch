@@ -666,3 +666,35 @@ The **ESP32 16‑Channel Relay Smart Switch** is a production‑ready, feature�
 For updates and support, refer to the [GitHub repository](https://www.github.com/xiv3r).
 
 </details>
+
+# Customize GPIO Pins
+> Find this line in sketch.ino
+- You can add or reassign gpio pins
+```
+// Change GPIO PIN
+  15, // IN1  - Relay 1
+  2,  // IN2  - Relay 2
+  4,  // IN3  - Relay 3
+  5,  // IN4  - Relay 4
+  18, // IN5  - Relay 5
+  19, // IN6  - Relay 6
+  3,  // IN7  - Relay 7
+  1,  // IN8  - Relay 8
+  23, // IN9  - Relay 9
+  13, // IN10 - Relay 10
+  14, // IN11 - Relay 11
+  27, // IN12 - Relay 12
+  26, // IN13 - Relay 13
+  25, // IN14 - Relay 14
+  33, // IN15 - Relay 15
+  32  // IN16 - Relay 16
+```
+```
+// Change GPIO PIN
+const DEFAULT_PINS = [15,2,4,5,18,19,3,1,23,13,14,27,26,25,33,32];
+```
+```
+// Change GPIO PIN
+int validPins[] = {15, 2, 4, 5, 18, 19, 3, 1, 23, 13, 14, 27, 26, 25, 33, 32};
+```
+
