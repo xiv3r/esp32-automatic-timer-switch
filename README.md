@@ -669,7 +669,7 @@ For updates and support, refer to the [GitHub repository](https://www.github.com
 
 # Customize GPIO Pins
 > Find this line in sketch.ino
-- You can add or reassign gpio pins
+- You can add, remove or reassign the gpio pins
 ```
 // Change GPIO PIN
   15, // IN1  - Relay 1
