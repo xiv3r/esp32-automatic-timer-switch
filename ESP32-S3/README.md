@@ -3,8 +3,11 @@
 - ESP32-S3 N16R8 (16mb flash 8mb ram)
 - DS3231 RTC Module
 - F-F Dupont Wires
-- Stabe Wifi connection
+- Stabe Wifi connection (NTP time sync)
 - 5V 3-5A Power Supply
+
+`optional`
+- 5v UPS (Maintain time without DS3231)
 
 # Libraries
 - ArduinoJson
