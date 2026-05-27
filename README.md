@@ -23,9 +23,7 @@
 
 - offset address
 ```
-bootloader : 0x1000
-partition  : 0x8000
-firmware   : 0x10000
+firmware : 0x0
 ```
 
 # WiFi Key
