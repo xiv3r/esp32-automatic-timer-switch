@@ -20,9 +20,7 @@
 
 - Offsets address
 ```
-bootloader: 0x0
-partitions: 0x8000
-firmware  : 0x10000
+firmware: 0x0
 ```
 # Wifi Key
 - Wifi Name:`ESP32_S3_16CH_Timer_Switch`
