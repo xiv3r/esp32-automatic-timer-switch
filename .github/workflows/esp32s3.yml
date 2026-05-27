@@ -15,20 +15,26 @@ jobs:
 
     - name: Install Arduino-cli
       run: |
-        curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=/usr/local/bin sh
+        sudo apt update
+        sudo apt install wget -y
+        wget -O arduino-cli.deb https://github.com/arduino/arduino-cli/releases/download/v1.5.0/arduino-cli_1.5.0-1_amd64.deb
+        sudo dpkg -i arduino-cli.deb
+        sudo apt --fix-broken install -y
+        sudo dpkg --configure -a
+        
         arduino-cli config init
-        arduino-cli config add board_manager.additional_urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+        arduino-cli config add board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
         arduino-cli core update-index
         arduino-cli core install esp32:esp32
         
         # Install libraries
-        arduino-cli lib install "Preferences"
         arduino-cli lib install "ArduinoJson"
         arduino-cli lib install "NTPClient"
         git clone --depth 1 --branch 1.14.1 https://github.com/adafruit/RTClib.git ~/Arduino/libraries/RTClib
-        
+
+        # Compile Firmware
         cd ESP32-S3
-        arduino-cli compile --fqbn esp32:esp32:esp32s3:FlashSize=16M,PSRAM=opi --output-dir firmware .
+        arduino-cli compile --fqbn esp32:esp32:esp32s3:FlashSize=16M,PSRAM=opi --clean --output-dir firmware .
          
     - name: Determine release tag
       id: get_tag
@@ -36,7 +42,7 @@ jobs:
         if [ "${{ github.event_name }}" == "release" ]; then
           TAG_NAME="${{ github.event.release.tag_name }}"
         else
-          TAG_NAME="esp32-s3"
+          TAG_NAME="esp32s3"
         fi
         echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
 
@@ -84,6 +90,6 @@ jobs:
       with:
         tag_name: ${{ steps.get_tag.outputs.tag_name }}
         files: |
-          ESP32-S3/firmware/*.bin
+          firmware/*.bin
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
