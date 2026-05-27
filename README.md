@@ -20,11 +20,19 @@
 
 # Installation
 - Download the [Firmware](https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/esp32) and flash.
-
 - Offset address
 ```
 firmware : 0x0
 ```
+### Drivers
+- CH340G: https://sparks.gogo.co.nz/ch340.html
+- CP2102: https://www.silabs.com/software-and-tools/usb-to-uart-bridge-vcp-drivers?tab=downloads
+
+### Android flasher
+https://play.google.com/store/apps/details?id=io.serialflow.espflash
+
+### Windows
+https://dl.espressif.com/public/flash_download_tool.zip
 
 # WiFi Key
 - WiFi SSID: `ESP32_16CH_Timer_Switch`
