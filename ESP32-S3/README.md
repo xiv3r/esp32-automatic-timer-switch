@@ -3,7 +3,7 @@
 - ESP32-S3 N16R8 (16mb flash 8mb ram)
 - DS3231 RTC Module
 - F-F Dupont Wires
-- Stabe Wifi connection (NTP time sync)
+- Stabe Wifi Connection
 - 5V 3-5A Power Supply
 
 `optional`
@@ -11,14 +11,13 @@
 
 # Libraries
 - ArduinoJson
-- Preferences (built-in)
 - NTPClient
-- [RTCLib 1.14.1](https://codeload.github.com/adafruit/RTClib/zip/refs/tags/1.14.1)
+- RTCLib 1.14.1
 
 # Installation
-- Download the Firmware and Flash
+- Download the [Firmware](https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/esp32s3) and flash.
 
-- Offsets address
+- Offset address
 ```
 firmware: 0x0
 ```
@@ -41,7 +40,7 @@ firmware: 0x0
 # Reset
 - Hold BOOT button for 5 seconds
 
-# GPIO Connections
+# 16-Channel GPIO Connection
 ```
 16CH | ESP32-S3 N16R8
 VCC  _____ 5V
@@ -64,11 +63,11 @@ IN16 _____ 16  Relay 16
 GND  _____ GND
 ```
 
-# DS3231 RTC Module GPIO
+# DS3231 GPIO Connection
 ```
-RTC  |  ESP32-S3 N16R8 
-SDA  → 17
-SCL  → 18
-VCC  → 3.3V
-GND  → GND
+DS3231  |  ESP32-S3 N16R8 
+   SDA  → 17
+   SCL  → 18
+   VCC  → 3.3V
+   GND  → GND
 ```
