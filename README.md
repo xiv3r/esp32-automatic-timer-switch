@@ -4,7 +4,7 @@
 # Requirements
 - ESP32 38P Pins
 - DS3231 RTC Module (recommended)
-- 1 -> 16 Channel 5V Relay
+- 1-16 Channel 5V Relay
 - Female to Female Dupont Wire
 - Stable Wifi Connection for NTP/RTC sync
 - 5v 3-5a Power supply
@@ -14,14 +14,13 @@
 
 # Libraries
 - ArduinoJson
-- Preferences (built-in)
 - NTPClient
 - RTClib 1.14.1
 
 # Installation
-- Download the [flasher](https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/flasher) and firmware and then flash.
+- Download the [Firmware](https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/esp32) and flash.
 
-- offset address
+- Offset address
 ```
 firmware : 0x0
 ```
@@ -79,7 +78,7 @@ GND  _____ GND
 ```
 # DS3231 GPIO Connection 
 ```
-DS3231 | ESP32
+DS3231 | ESP32 38P
 VCC → 3.3V
 SDA → 21
 SCL → 22
