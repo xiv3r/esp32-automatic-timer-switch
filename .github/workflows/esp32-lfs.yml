@@ -1,0 +1,81 @@
+name: ESP32 Firmware Build LFS
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '**.ino'
+    
+jobs:
+  build-and-commit:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository with LFS
+      uses: actions/checkout@v5
+      with:
+        lfs: true
+
+    - name: Setup Git LFS
+      run: |
+        sudo apt-get install -y git-lfs
+        git lfs install
+        git lfs track "firmware/**/*.merged.bin"
+        git add .gitattributes
+
+    - name: Clean old firmware
+      run: |
+        # Remove all files including old .merged.bin
+        rm -rf firmware/*
+        mkdir -p firmware
+
+    - name: Install Arduino-cli
+      run: |
+        sudo apt update
+        sudo apt install wget -y
+
+        # Arduino-Cli Debian package
+        wget -O arduino-cli.deb https://github.com/arduino/arduino-cli/releases/download/v1.5.0/arduino-cli_1.5.0-1_amd64.deb
+        sudo dpkg -i arduino-cli.deb
+        sudo apt --fix-broken install -y
+        sudo dpkg --configure -a
+        
+        arduino-cli config init
+        arduino-cli config add board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+        arduino-cli core update-index
+        arduino-cli core install esp32:esp32
+        
+        # Install libraries
+        arduino-cli lib install "ArduinoJson"
+        arduino-cli lib install "NTPClient"
+        git clone --depth 1 --branch 1.14.1 https://github.com/adafruit/RTClib.git ~/Arduino/libraries/RTClib
+
+        # Compile firmware (creates new .merged.bin)
+        arduino-cli compile --fqbn esp32:esp32:esp32 --clean --output-dir firmware .
+
+    - name: Commit firmware to Git LFS
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "actions@github.com"
+        
+        # Remove old .merged.bin from git tracking (if it existed)
+        git rm --cached firmware/*.merged.bin 2>/dev/null || true
+        git rm --cached firmware/**/*.merged.bin 2>/dev/null || true
+        
+        # Add only new .merged.bin files
+        find firmware/ -name "*.merged.bin" -type f -exec git add {} \;
+        git add .gitattributes
+        
+        # Show what will be committed (old deleted, new added)
+        echo "Changes to be committed:"
+        git diff --cached --name-status
+        
+        if git diff --cached --quiet; then
+          echo "No changes to commit"
+        else
+          git commit -m "Update firmware binaries [skip ci]"
+          git push
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
