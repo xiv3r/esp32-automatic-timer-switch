@@ -4,7 +4,6 @@
  *  Author: Raff Alds
  *  Github: https://www.github.com/xiv3r
  *  Project: Home, Business, Farm Automation etc...
- *  Type: Production Grade
 ============================================================
 */
 
