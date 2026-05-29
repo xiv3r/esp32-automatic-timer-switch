@@ -2,10 +2,12 @@ name: ESP32 Firmware Build LFS
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - '**.ino'
+  ## push:
+   ## branches: [main]
+   ## paths:
+   ## - '**.ino'
+  release:
+   types: [published]
     
 jobs:
   build-and-commit:
