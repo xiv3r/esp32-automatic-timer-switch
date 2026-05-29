@@ -2,9 +2,11 @@ name: Build ESP32 Firmware
 
 on:
   workflow_dispatch:
-  release:
-    types: [published]
-    
+  push:
+    branches: [main]
+    paths:
+      - '**.ino'
+      
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
