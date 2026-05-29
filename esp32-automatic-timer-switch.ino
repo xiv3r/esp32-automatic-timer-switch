@@ -319,50 +319,6 @@ private:
 
 // ───Forward Declarations───────────────────────────────────────────
 SelfHealingSystem healer;
-
-// Configuration functions
-void initDefaults();
-void loadGPIOConfig();
-void saveGPIOConfig();
-void loadConfiguration();
-void saveConfiguration();
-void loadExtConfig();
-void saveExtConfig();
-
-// Time/RTC functions
-void syncInternalRTC(time_t rawUtcEpoch);
-void updateScheduleCache();
-
-// Web server
-void setupWebServer();
-
-// API Handlers
-void handleGetRelays();
-void handleManualControl();
-void handleResetManual();
-void handleSaveRelay();
-void handleRelayName();
-void handleGetTime();
-void handleGetWiFi();
-void handleSaveWiFi();
-void handleWiFiScanStart();
-void handleWiFiScanResults();
-void handleGetNTP();
-void handleSaveNTP();
-void handleSyncNTP();
-void handleGetAP();
-void handleSaveAP();
-void handleGetSystem();
-void handleReset();
-void handleFactoryReset();
-void handleGetGPIOConfig();
-void handleSaveGPIOConfig();
-void handleAddGPIO();
-void handleDeleteGPIO();
-void handleToggleActiveLow();
-void handleGlobalActiveMode();
-
-// Memory Management
 void performMemoryCleanup();
 void cleanupStaleResources();
 void checkWebServerHealth();
