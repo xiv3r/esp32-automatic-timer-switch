@@ -110,571 +110,796 @@ GND → GND
 # Full Features
 </summary>
 
-# ESP32 16‑Channel Relay Smart Switch – Full Feature Documentation
+# ESP32 16-Channel Relay Smart Switch - Complete Documentation
 
-**Author:** Raff Alds  
-**GitHub:** [xiv3r](https://www.github.com/xiv3r)  
-**Project:** Home, Business, Farm Automation, etc.
-
----
-
-## Table of Contents
-
-1. [Overview](#overview)
-2. [Hardware Requirements](#hardware-requirements)
-3. [Key Features](#key-features)
-4. [System Architecture](#system-architecture)
-5. [Relay Management](#relay-management)
-   - GPIO Configuration
-   - Active Level (LOW/HIGH) & Global Mode
-   - Manual Override & Naming
-6. [Scheduling Engine](#scheduling-engine)
-   - Schedule Slots (8 per relay)
-   - Day of Week & Day of Month Masks
-   - Overnight & Always‑ON Support
-7. [Time Management](#time-management)
-   - NTP Synchronisation
-   - Browser Time Sync
-   - DS3231 Hardware RTC
-   - Drift Compensation
-   - RTC Rebase
-8. [WiFi & Networking](#wifi--networking)
-   - Station (STA) Mode
-   - Access Point (AP) Mode
-   - Captive Portal & DNS
-   - mDNS
-   - WiFi Scanning
-9. [Web Interface](#web-interface)
-   - Pages Overview
-   - Responsive UI
-   - Real‑time Clock Display
-   - Edit Relay Names (Double‑click)
-10. [API Reference](#api-reference)
-    - Relay Control
-    - WiFi, NTP, AP, GPIO
-    - System & Factory Reset
-11. [Self‑Healing System](#self-healing-system)
-    - Live Reconfiguration
-    - Critical State Saving
-    - Service Verification
-12. [Memory Management](#memory-management)
-    - Heap Monitoring
-    - Stale Resource Cleanup
-    - Connection Timeout
-13. [Factory Reset](#factory-reset)
-    - Boot Button (Hardware)
-    - API Factory Reset
-14. [Persistent Configuration (NVS)](#persistent-configuration-nvs)
-15. [Health Metrics & Diagnostics](#health-metrics--diagnostics)
-16. [Limitations & Notes](#limitations--notes)
+## 📋 Table of Contents
+- [Overview](#overview)
+- [Features](#features)
+- [Hardware Requirements](#hardware-requirements)
+- [Pin Configuration](#pin-configuration)
+- [Installation & Setup](#installation--setup)
+- [Web Interface Guide](#web-interface-guide)
+- [API Reference](#api-reference)
+- [Configuration System](#configuration-system)
+- [Time Management](#time-management)
+- [Schedule Engine](#schedule-engine)
+- [Self-Healing System](#self-healing-system)
+- [GPIO Management](#gpio-management)
+- [Factory Reset](#factory-reset)
+- [Troubleshooting](#troubleshooting)
+- [Technical Specifications](#technical-specifications)
 
 ---
 
 ## Overview
 
-The **ESP32 16‑Channel Relay Smart Switch** is a full‑featured automation controller capable of driving up to 16 relays. It combines:
+The **ESP32 16-Channel Relay Smart Switch** is a production-grade automation system designed for home, business, and farm automation. It features:
 
-- **WiFi** (station + access point)
-- **Precise scheduling** with day‑of‑week and day‑of‑month selectors
-- **Manual override** for each relay
-- **Time synchronisation** via NTP or browser (fallback to DS3231 RTC)
-- **Self‑healing** mechanisms to recover WiFi, mDNS, DNS, and web server
-- **Intuitive web interface** with no external dependencies
+- **16 independent relay channels** with individual scheduling
+- **Web-based configuration interface** accessible via WiFi
+- **DS3231 RTC** for timekeeping across power cycles
+- **NTP time synchronization** with fallback servers
+- **Browser-based time sync** as a last resort
+- **Self-healing capabilities** for reliable operation
+- **GPIO reconfiguration** without firmware changes
 
-All settings (GPIO mapping, schedules, WiFi credentials, NTP parameters, relay names) are stored in non‑volatile storage (NVS / Preferences) and survive power cycles.
+---
+
+## Features
+
+### Core Features
+| Feature | Description |
+|---------|-------------|
+| **16 Relays** | Independent control with 8 schedules per relay |
+| **Web Interface** | Full configuration via browser |
+| **mDNS Support** | Access via `http://esp32.local` |
+| **NTP Sync** | Automatic time synchronization |
+| **DS3231 RTC** | Battery-backed real-time clock |
+| **Manual Override** | Temporary control without schedule changes |
+| **Persistent Storage** | All settings survive power loss |
+
+### Advanced Features
+- **Active Low/High Configuration** - Per-relay or global level control
+- **Flexible Scheduling** - Daily, weekday, weekend, specific days of month
+- **Overnight Schedules** - Support for schedules spanning midnight
+- **WiFi Scanning** - Network discovery with automatic pausing of connections
+- **Browser Time Sync** - Fallback when NTP unavailable
+- **Self-Healing** - Automatic recovery of WiFi, mDNS, DNS, WebServer
+- **Critical State Recovery** - Relay states restored after power loss
+- **Factory Reset** - Via button or web interface
 
 ---
 
 ## Hardware Requirements
 
-| Component            | Specification / Pinout                                |
-| -------------------- | ----------------------------------------------------- |
-| **Microcontroller**  | ESP32 (38‑pin variant recommended)                   |
-| **Relays**           | Up to 16, any voltage/current rating (controlled by GPIO) |
-| **GPIO Pins**        | Defaults: `15,2,4,5,18,19,3,1,23,13,14,27,26,25,33,32` |
-| **RTC (optional)**   | DS3231 on I²C pins **GPIO21 (SDA)** – **GPIO22 (SCL)** |
-| **Boot button**      | GPIO0 (pulled up, active LOW) – used for factory reset |
-| **Power**            | 5V / USB (relay coil power may require external supply) |
+### Required Components
 
-> **Note:** The firmware can reassign GPIO pins at runtime. The default pins cover the most common ESP32 development boards.
+| Component | Specification | Quantity |
+|-----------|--------------|----------|
+| **ESP32 Board** | ESP32-WROOM-32 (38-pin) | 1 |
+| **Relay Module** | 16-Channel, 5V/12V | 1 |
+| **DS3231 RTC** | I2C interface | 1 |
+| **Power Supply** | 5V @ 2A (min) | 1 |
+| **Jumper Wires** | Female-Female | 20+ |
 
----
+### Optional Components
+- **Capacitors** - 100µF on relay power lines for stability
+- **Push Button** - For hardware factory reset (BOOT button built-in)
+- **LED Indicators** - For status visualization
 
-## Key Features
+### Pin Connections
 
-- **16 independent relays** – each with its own name, schedule, and manual override.
-- **8 schedule slots** per relay – allowing complex time patterns.
-- **Day‑of‑week** (Sun–Sat) and **day‑of‑month** (1–31) selection per schedule.
-- **Overnight schedules** (start > stop) and “Always ON” (start == stop) support.
-- **Manual override** – any relay can be forced ON or OFF, independent of schedules.
-- **Two time synchronisation sources**:
-  - NTP (configurable server + 4 fallback servers)
-  - Browser‑based sync (when NTP is unreachable)
-- **DS3231 hardware RTC** – battery‑backed timekeeping across power failures.
-- **Active level configuration** – relays can be active LOW or HIGH, with a **global override** mode.
-- **WiFi station** with automatic reconnection and exponential backoff.
-- **Access point** (AP) with configurable SSID, password, channel and hidden option.
-- **Captive portal** – redirects all DNS requests to the device IP.
-- **mDNS** – device accessible as `hostname.local` (default `esp32.local`).
-- **Self‑healing** – continuously verifies and restores WiFi, web server, DNS, mDNS.
-- **Critical state saving** – restores manual relay states after unexpected restart.
-- **Web interface** with:
-  - Real‑time clock display
-  - Relay state and schedule editor
-  - WiFi scanner
-  - GPIO configuration page
-  - System information dashboard
-- **No external libraries** – uses only Arduino core, standard ESP32 libraries.
-- **Factory reset** via boot button hold (5 seconds) or API.
-- **Memory management** – periodic heap cleanup, stale connection pruning.
+| ESP32 Pin | Connection |
+|-----------|------------|
+| GPIO21 | DS3231 SDA |
+| GPIO22 | DS3231 SCL |
+| GPIO0 | BOOT Button (factory reset) |
+| GPIO1-33 | Relays 1-16 (see pin table) |
+
+> **Note**: GPIOs 6-11 are used for internal flash and unavailable.
 
 ---
 
-## System Architecture
+## Pin Configuration
 
-The firmware is structured around several core modules:
+### Default Relay Pins
 
-1. **Time Engine** – maintains an internal monotonic clock (`internalEpoch`) that is periodically corrected by NTP, browser sync, or the DS3231 RTC. Drift compensation is applied.
-2. **Schedule Cache** – evaluates all schedules every second (or on demand) and stores the desired relay state in `scheduleActiveCache[]`.
-3. **Relay Update Loop** – applies either the cached schedule state or the manual override state to the GPIO pins, respecting active‑low/high configuration.
-4. **Web Server** – serves the UI and REST API.
-5. **Self‑Healing** – runs background checks and recovers subsystems.
-6. **NVS Storage** – saves all settings (`sysConfig`, `extConfig`, `relayConfigs`, `gpioConfig`, `criticalState`).
+| Relay | GPIO | Relay | GPIO |
+|-------|------|-------|------|
+| 1 | 15 | 9 | 23 |
+| 2 | 2 | 10 | 13 |
+| 3 | 4 | 11 | 14 |
+| 4 | 5 | 12 | 27 |
+| 5 | 18 | 13 | 26 |
+| 6 | 19 | 14 | 25 |
+| 7 | 3 | 15 | 33 |
+| 8 | 1 | 16 | 32 |
 
-The `loop()` processes:
-- Web server and DNS requests
-- Boot button detection
-- WiFi connection state machine
-- NTP sync (periodic or on failure)
-- Schedule processing (every 250 ms)
-- Relay output updates (every 500 ms)
-- RTC rebase (every 5 minutes)
-- Health checks and memory cleanup
+### Customizing Relay Pins
 
----
+The system supports dynamic GPIO reassignment without recompiling:
 
-## Relay Management
+1. Navigate to **GPIO Configuration** page
+2. Add/remove relays using the dropdown
+3. Toggle **Active Level** (LOW/HIGH) per relay
+4. Enable **Global Active Mode** for uniform behavior
 
-### GPIO Configuration
-
-- Each relay is assigned a **GPIO pin**.
-- The firmware supports dynamic pin assignment; pins can be added/removed via the web interface.
-- Up to **16 relays**.
-- After changing pins, schedules and names for existing relays are preserved (relays are “shifted”).
-- The list of available GPIOs is limited to those safe for output (e.g. `15,2,4,5,18,19,3,1,23,13,14,27,26,25,33,32`).
-
-### Active Level & Global Mode
-
-- **Active LOW** – relay energises when the GPIO is pulled **LOW**.
-- **Active HIGH** – relay energises when the GPIO is pulled **HIGH**.
-- Each relay can have its own active level (stored in `gpioConfig.activeLow[]`).
-- **Global Active Mode** (in `ExtConfig`) overrides per‑relay settings:
-  - `0` – per‑relay configuration (individual).
-  - `1` – **Global LOW** (all relays active LOW).
-  - `2` – **Global HIGH** (all relays active HIGH).
-- Changing the global mode takes effect immediately without restart.
-
-### Manual Override & Naming
-
-- Each relay has a **name** (max 15 characters) – editable from the web interface (double‑click the relay title).
-- Manual override forces the relay to a specific ON/OFF state, bypassing schedules.
-- The override persists across reboots (saved in NVS and critical state).
-- To return to automatic scheduling, click the **Auto** button.
+> **Active Level Explanation**:
+> - **Active LOW**: Relay activates when pin is LOW (0V)
+> - **Active HIGH**: Relay activates when pin is HIGH (3.3V/5V)
 
 ---
 
-## Scheduling Engine
+## Installation & Setup
 
-### Schedule Slots
+### 1. Upload the Firmware
 
-- **8 schedule slots** per relay (`TimerSchedule` structure).
-- Each slot contains:
-  - Start time (hour, minute, second)
-  - Stop time (hour, minute, second)
-  - Enabled flag
-  - Day‑of‑week mask (8‑bit)
-  - Day‑of‑month mask (32‑bit)
-- Slots are evaluated in order; if any slot matches the current time and its `enabled == true`, the relay is turned **ON**.
+```bash
+# Using Arduino IDE
+1. Install ESP32 board support
+2. Install required libraries:
+   - WiFi.h (built-in)
+   - WebServer.h (built-in)
+   - DNSServer.h (built-in)
+   - Preferences.h (built-in)
+   - ArduinoJson (version 6)
+   - NTPClient (by Fabrice Weinberg)
+   - RTClib (by Adafruit)
+3. Select ESP32 board (e.g., ESP32 Dev Module)
+4. Compile and upload
+```
 
-### Day Masks
+### 2. First Boot
 
-- **Day‑of‑week** – bitmask from `DAY_SUNDAY` (bit 0) to `DAY_SATURDAY` (bit 6).  
-  Predefined constants: `DAY_ALL`, `DAY_WEEKDAYS`, `DAY_WEEKENDS`.
-- **Day‑of‑month** – 32‑bit mask where bit `n` (0‑based) corresponds to day `n+1`.  
-  Value `0` means “every day of the month”. Value `0xFFFFFFFF` means “all month days”.
+The ESP32 creates a WiFi Access Point:
 
-### Overnight & Always‑ON
+| Setting | Value |
+|---------|-------|
+| **SSID** | `ESP32_16CH_Timer_Switch` |
+| **Password** | `ESP32-admin` |
+| **IP Address** | `192.168.4.1` |
 
-- **Overnight schedule** – when stop time is earlier than start time (e.g. 22:00 → 06:00), the schedule is active across midnight.
-- **Always ON** – when start time == stop time, the schedule is **always active** when the day mask matches.
+### 3. Initial Configuration
 
-### Schedule Caching
+1. Connect to the ESP32's WiFi network
+2. Open browser to `http://192.168.4.1`
+3. Navigate to **WiFi** page
+4. Scan for networks and connect to your WiFi
+5. Set your timezone and NTP server
+6. Configure relays as needed
 
-To avoid repeated time‑to‑struct conversions, the schedule cache is refreshed:
-- Every `SCHEDULE_CACHE_INTERVAL` (1 second)
-- After any time sync (NTP, browser, RTC)
-- After manual override reset
-- After saving a relay configuration
+### 4. Accessing the Device
 
----
-
-## Time Management
-
-### NTP Synchronisation
-
-- **Primary NTP server** – configurable via web (default: `time.google.com`).
-- **Fallback servers** (hardcoded):
-  1. `time.google.com`
-  2. `time.windows.com`
-  3. `time.cloudflare.com`
-  4. `time.facebook.com`
-- Sync interval: configurable from **1 to 24 hours** (default 1 hour).
-- On failure, the next fallback server is tried; after all fail, the firmware retries after `NTP_RETRY_INTERVAL` (30 seconds).
-- Upon successful sync:
-  - Internal epoch is corrected.
-  - Drift compensation is updated (based on difference between RTC and NTP over time).
-  - DS3231 RTC is adjusted (if present).
-  - Schedule cache is refreshed.
-
-### Browser Time Sync
-
-- Used when NTP is unreachable (e.g. captive portal, isolated network).
-- User clicks **“Sync Browser”** on the **Time** page.
-- The browser sends its UTC epoch (`Date.now() / 1000`) to `/api/time/browser-sync`.
-- The firmware sets the internal epoch to this value and marks the time source as `TIME_SOURCE_BROWSER`.
-- As soon as NTP succeeds later, it will override the browser time.
-- This sync also updates the DS3231 RTC.
-
-### DS3231 Hardware RTC
-
-- **Auto‑detected** on I²C address `0x68`.
-- If present and has not lost power (`rtc.lostPower()`), the firmware loads time from RTC at boot.
-- The RTC is **re‑synced**:
-  - Every minute from the internal epoch (to keep it accurate).
-  - Immediately after any NTP or browser sync.
-- The firmware also uses the RTC as a **fallback** when no WiFi is available (`getCurrentEpoch()` returns RTC time if internal epoch is invalid).
-
-### Drift Compensation
-
-- The internal time is maintained using `micros()` (`internalEpoch` + elapsed microseconds * `driftCompensation`).
-- After each NTP sync, a drift factor is calculated:  
-  `measured = (actual_seconds) / (nominal_seconds)`.
-- The drift factor is filtered over the last 4 measurements and blended into `driftCompensation` (80% old, 20% new).
-- Limits: `0.95 ≤ driftCompensation ≤ 1.05`.
-
-### RTC Rebase
-
-- Every `RTC_REBASE_INTERVAL` (5 minutes) the internal epoch is adjusted to correct for micros() overflow and drift accumulation (`performRTCReabase()`).
-- This ensures long‑term accuracy without relying solely on NTP.
-
-### Time Source Tracking
-
-- `timeSource` can be:
-  - `TIME_SOURCE_NONE` – no valid time.
-  - `TIME_SOURCE_NTP` – synchronised via NTP.
-  - `TIME_SOURCE_BROWSER` – synchronised via browser.
-  - `TIME_SOURCE_RTC` – loaded from DS3231 at boot.
+After connecting to your network:
+- **Local Access**: `http://esp32.local` (mDNS)
+- **IP Access**: `http://[ESP32-IP-Address]`
 
 ---
 
-## WiFi & Networking
+## Web Interface Guide
 
-### Station (STA) Mode
+### Navigation Structure
 
-- Connects to a user‑provided SSID / password.
-- **Automatic reconnection**:
-  - Checks every `WIFI_CHECK_INTERVAL` (10 seconds).
-  - After `MAX_RECONNECT` (10) failures, backs off for 5 minutes.
-- While connecting, a timeout of `WIFI_CONNECT_TIMEOUT` (20 seconds) applies.
-- Once connected:
-  - IP address is displayed in the web interface.
-  - mDNS announces `_http._tcp` service.
-  - NTP sync is attempted.
+```
+┌─────────────────────────────────────────────────────────────┐
+│  [Relays]  [WiFi]  [Time]  [AP]  [GPIO]  [System]                      │
+├─────────────────────────────────────────────────────────────┤
+│                                                                        │
+│  Status Indicators:  ● WiFi Status   ● Time Source                     │
+│                      Current Time: HH:MM:SS                            │
+└─────────────────────────────────────────────────────────────┘
+```
 
-### Access Point (AP) Mode
+### 1. Relays Page
 
-- Always active (even when STA is connected) – `WIFI_AP_STA` mode.
-- Configurable:
-  - SSID (max 31 chars)
-  - Password (min 8 chars, can be empty for open AP)
-  - Channel (1–13)
-  - Hidden SSID (broadcast or not)
-- Default AP credentials:  
-  **SSID:** `ESP32_16CH_Timer_Switch`  
-  **Password:** `ESP32-admin`
-- The AP is restarted automatically when its settings change.
+**Features:**
+- **Real-time relay status** (ON/OFF/Manual)
+- **Manual override buttons** (ON/OFF/Auto)
+- **Schedule management** (8 schedules per relay)
+- **Double-click relay name to rename**
+- **Visual schedule editor**
 
-### Captive Portal & DNS
+**Schedule Options:**
+- Start/Stop times (down to seconds)
+- Days of week selection
+- Days of month selection (1-31)
+- Enable/disable toggle
+- Overnight schedule support
 
-- A `DNSServer` instance runs on port 53, redirecting **all** domain names to the AP IP address.
-- This allows any device that connects to the AP to be automatically redirected to the web interface, regardless of the URL they try to access.
-- The following well‑known captive portal paths are intercepted:
-  - `/hotspot-detect.html`
-  - `/library/test/success.html`
-  - `/generate_204`
-  - `/success.txt`
-  - `/canonical.html`
-  - `/connecttest.txt`
-  - `/ncsi.txt`
-  - `/redirect`
+### 2. WiFi Page
 
-### mDNS
+**Features:**
+- View current connection status
+- Scan for available networks
+- Enter SSID and password
+- RSSI signal strength indicator
+- Auto-reconnect on settings change
 
-- The device advertises itself as `http://<hostname>.local`.
-- Default hostname: `esp32` (after sanitising the AP SSID).
-- Hostname can be changed via API (`/api/mdns` POST) or is automatically derived from the AP SSID.
-- Service TXT records: `model=ESP32`, `version=v9`, `channels=N`.
-- If mDNS fails to start, the self‑healing system will retry.
+### 3. Time Page
 
-### WiFi Scanning
+**Features:**
+- NTP server configuration
+- GMT offset (seconds)
+- Daylight saving offset
+- Sync interval (1-24 hours)
+- **Manual NTP sync** button
+- **Browser time sync** (fallback)
 
-- The web interface includes a **“Scan”** button on the **WiFi** page.
-- Scanning is asynchronous:
-  - `POST /api/wifi/scan` starts a background scan.
-  - `GET /api/wifi/scan` returns the list of networks (or `scanning: true` while in progress).
-- Results include SSID, RSSI, and encryption status.
-- The user can click any discovered network to autofill the SSID field.
+### 4. AP Page
 
----
+**Features:**
+- Change Access Point SSID
+- Set AP password (min 8 chars)
+- Select WiFi channel (1-13)
+- Toggle SSID visibility (hidden mode)
 
-## Web Interface
+### 5. GPIO Page
 
-The UI is entirely self‑contained (no external CSS/JS). All pages are served from PROGMEM.
+**Features:**
+- View current relay pins
+- Add/remove relay channels
+- Toggle Active LOW/HIGH per relay
+- Global active mode override
+- Reset to default pins
 
-### Pages Overview
+### 6. System Page
 
-| Page       | URL        | Description                                                                 |
-| ---------- | ---------- | --------------------------------------------------------------------------- |
-| **Relays** | `/`        | Main control panel: shows all relays, current state, manual buttons, and schedule editor (8 slots per relay). Double‑click a relay name to edit. |
-| **WiFi**   | `/wifi`    | Configure STA SSID/password, scan networks, view connection status.        |
-| **Time**   | `/ntp`     | Set NTP server, GMT offset, DST offset, sync interval. Shows current time source. Buttons to sync NTP now or sync from browser. |
-| **AP**     | `/ap`      | Configure Access Point SSID, password, channel, hidden option.              |
-| **GPIO**   | `/gpio`    | Set global active mode, add/remove relays (GPIO pins), toggle active LOW/HIGH per relay. |
-| **System** | `/system`  | Dashboard with STA/AP IP, heap usage, uptime, RSSI, time source, NTP sync age, drift compensation, chip model, mDNS hostname, RTC presence. Buttons to verify services and factory reset. |
-
-### UI Highlights
-
-- **Real‑time clock** – shown in the top‑right corner, updates every second via `/api/time`.
-- **Status dots** – WiFi (green/red) and time source (green = NTP, blue = browser/RTC, yellow = none).
-- **Relay cards** – each card shows:
-  - Name (editable by double‑click)
-  - Current state badge (ON/OFF/MANUAL)
-  - ON/OFF/Auto buttons
-  - Up to 8 schedule tabs (expandable)
-  - Day‑of‑week and day‑of‑month selectors
-  - Time pickers (with seconds)
-  - “Save Relay” button
-- **Toast notifications** – feedback for every action (save, sync, error).
-- **Responsive** – works on mobile phones (grid adjusts).
+**Features:**
+- System information display
+  - IP addresses (STA & AP)
+  - Free heap memory
+  - Uptime
+  - WiFi RSSI
+  - Time source status
+  - NTP sync age
+  - Drift compensation
+  - RTC presence
+- Service verification button
+- Factory reset button
 
 ---
 
 ## API Reference
 
-All endpoints return `application/json`. Unless otherwise noted, POST requests require a JSON body.
+### REST API Endpoints
 
-### Relay Endpoints
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/relays` | Get all relay states and schedules |
+| POST | `/api/relay/manual` | Set manual relay state |
+| POST | `/api/relay/reset` | Return relay to auto mode |
+| POST | `/api/relay/save` | Save schedule configuration |
+| POST | `/api/relay/name` | Set relay name |
+| GET | `/api/time` | Get current time and status |
+| POST | `/api/time/browser-sync` | Sync time from browser |
+| GET | `/api/wifi` | Get WiFi configuration |
+| POST | `/api/wifi` | Save WiFi settings |
+| POST | `/api/wifi/scan` | Start WiFi scan |
+| GET | `/api/wifi/scan` | Get scan results |
+| GET | `/api/ntp` | Get NTP settings |
+| POST | `/api/ntp` | Save NTP settings |
+| POST | `/api/ntp/sync` | Trigger NTP sync |
+| GET | `/api/ap` | Get AP settings |
+| POST | `/api/ap` | Save AP settings |
+| GET | `/api/gpio` | Get GPIO configuration |
+| POST | `/api/gpio/save` | Save GPIO configuration |
+| POST | `/api/gpio/add` | Add relay pin |
+| POST | `/api/gpio/delete` | Delete relay pin |
+| POST | `/api/gpio/toggle-active-low` | Toggle active level |
+| GET | `/api/gpio/global-mode` | Get global active mode |
+| POST | `/api/gpio/global-mode` | Set global active mode |
+| GET | `/api/system` | Get system information |
+| POST | `/api/reset` | Verify services |
+| POST | `/api/factory-reset` | Factory reset device |
 
-| Method | Endpoint                       | Description                                          |
-| ------ | ------------------------------ | ---------------------------------------------------- |
-| GET    | `/api/relays`                  | Returns full list of relays (state, manual, schedules, name, pin). |
-| POST   | `/api/relay/manual`            | Set manual override. Body: `{"relay":0,"state":true}` |
-| POST   | `/api/relay/reset`             | Remove manual override (return to auto). Body: `{"relay":0}` |
-| POST   | `/api/relay/save`              | Save schedules for a relay. Body: `{"relay":0,"schedules":[...]}` |
-| POST   | `/api/relay/name`              | Change relay name. Body: `{"relay":0,"name":"New name"}` |
+### Example API Calls
 
-### Time Endpoints
+#### Set Relay Manual State
+```bash
+curl -X POST http://esp32.local/api/relay/manual \
+  -H "Content-Type: application/json" \
+  -d '{"relay":0,"state":true}'
+```
 
-| Method | Endpoint                       | Description                                                                 |
-| ------ | ------------------------------ | --------------------------------------------------------------------------- |
-| GET    | `/api/time`                    | Returns `{"time":"HH:MM:SS","wifi":bool,"ntp":bool,"timeSource":"...","rtcPresent":bool}` |
-| POST   | `/api/time/browser-sync`       | Sync internal time from browser. Body: `{"utc_epoch":1704067200}`           |
+#### Sync Time from Browser
+```bash
+curl -X POST http://esp32.local/api/time/browser-sync \
+  -H "Content-Type: application/json" \
+  -d '{"utc_epoch":1700000000}'
+```
 
-### WiFi Endpoints
+#### Get Relay Status
+```bash
+curl http://esp32.local/api/relays
+```
 
-| Method | Endpoint                       | Description                                                                 |
-| ------ | ------------------------------ | --------------------------------------------------------------------------- |
-| GET    | `/api/wifi`                    | Returns STA SSID, connection status, IP, RSSI.                              |
-| POST   | `/api/wifi`                    | Save STA credentials. Body: `{"ssid":"...","password":"..."}`               |
-| POST   | `/api/wifi/scan`               | Start a WiFi scan (async).                                                  |
-| GET    | `/api/wifi/scan`               | Get scan results: `{"scanning":bool,"networks":[{"ssid","rssi","enc"}]}`    |
-
-### NTP Endpoints
-
-| Method | Endpoint                       | Description                                                                 |
-| ------ | ------------------------------ | --------------------------------------------------------------------------- |
-| GET    | `/api/ntp`                     | Returns `ntpServer, gmtOffset, daylightOffset, syncHours, globalActiveMode`. |
-| POST   | `/api/ntp`                     | Save NTP settings. Body: `{"ntpServer":"...","gmtOffset":...,"daylightOffset":...,"syncHours":...}` |
-| POST   | `/api/ntp/sync`                | Force an immediate NTP sync.                                                |
-
-### AP Endpoints
-
-| Method | Endpoint                       | Description                                                                 |
-| ------ | ------------------------------ | --------------------------------------------------------------------------- |
-| GET    | `/api/ap`                      | Returns AP SSID, password (masked), channel, hidden flag.                   |
-| POST   | `/api/ap`                      | Save AP settings. Body: `{"ap_ssid":"...","ap_password":"...","ap_channel":6,"ap_hidden":false}` |
-
-### GPIO Endpoints
-
-| Method | Endpoint                               | Description                                                                 |
-| ------ | -------------------------------------- | --------------------------------------------------------------------------- |
-| GET    | `/api/gpio`                            | Returns `count, pins[], activeLow[], availablePins[]`.                      |
-| POST   | `/api/gpio/save`                       | Replace entire pin list. Body: `{"pins":[15,2,...]}`                         |
-| POST   | `/api/gpio/add`                        | Add a relay at the end. Body: `{"pin":12}`                                  |
-| POST   | `/api/gpio/delete`                     | Remove relay at index. Body: `{"index":3}`                                  |
-| POST   | `/api/gpio/toggle-active-low`          | Toggle active LOW/HIGH for a relay. Body: `{"index":0}`                     |
-| GET    | `/api/gpio/global-mode`                | Returns `{"mode":0|1|2}`                                                    |
-| POST   | `/api/gpio/global-mode`                | Set global mode. Body: `{"mode":1}`                                         |
-
-### mDNS Endpoints
-
-| Method | Endpoint                       | Description                                                                 |
-| ------ | ------------------------------ | --------------------------------------------------------------------------- |
-| GET    | `/api/mdns`                    | Returns `hostname, started, url`.                                           |
-| POST   | `/api/mdns`                    | Set mDNS hostname. Body: `{"hostname":"myesp"}`                             |
-| POST   | `/api/mdns/restart`            | Force restart of mDNS service.                                              |
-
-### System Endpoints
-
-| Method | Endpoint                       | Description                                                                 |
-| ------ | ------------------------------ | --------------------------------------------------------------------------- |
-| GET    | `/api/system`                  | Rich system info (IPs, uptime, heap, time source, sync ages, drift, RTC status). |
-| POST   | `/api/reset`                   | Trigger self‑healing service verification (no restart).                     |
-| POST   | `/api/factory-reset`           | Erase all settings and restore defaults.                                    |
-
----
-
-## Self‑Healing System
-
-The `SelfHealingSystem` class runs in the background to keep the device operational without human intervention.
-
-### Live Reconfiguration
-
-Without restarting the device, it can:
-
-- **Reconfigure WiFi** – if credentials changed or connection lost, call `WiFi.begin()` again.
-- **Reconfigure mDNS** – restart mDNS service if it stopped advertising.
-- **Reconfigure DNS** – (currently a placeholder, but can be extended).
-- **Reconfigure web server** – check that the server is still accepting connections.
-- **Reconfigure AP** – if the softAP IP becomes `0.0.0.0`, restart AP with saved settings.
-
-### Critical State Saving
-
-- The `CriticalRelayState` structure stores:
-  - Current relay ON/OFF states
-  - Manual override flags
-  - Timestamp and checksum
-- Saved every 5 minutes and after any manual change.
-- On boot, `restoreCriticalState()` reapplies manual overrides, so relays return to their pre‑reboot state (only for manual‑controlled relays).
-
-### Service Verification
-
-- `smartRecovery()` runs every 10 seconds.
-- It checks WiFi connection, mDNS announcements, and calls `verifyRelayStates()` every 30 seconds to ensure physical relay outputs match the expected states (fixes any stray changes).
-- `performTargetedRecovery()` reinitialises all services on demand (e.g., after factory reset or API call).
-
-### Health Metrics
-
-The `HealthMetrics` struct tracks failures:
-- `wifiFailures`, `ntpFailures`, `mdnsFailures`, `dnsFailures`, `webServerFailures`
-- Used to avoid excessive recovery attempts (e.g., only reconfigure WiFi after 3 failures).
+#### Response Example
+```json
+[
+  {
+    "state": true,
+    "manual": false,
+    "name": "Living Room Light",
+    "pin": 15,
+    "schedules": [
+      {
+        "startHour": 6,
+        "startMinute": 0,
+        "startSecond": 0,
+        "stopHour": 22,
+        "stopMinute": 0,
+        "stopSecond": 0,
+        "enabled": true,
+        "days": 62,
+        "monthDays": 0
+      }
+    ]
+  }
+]
+```
 
 ---
 
-## Memory Management
+## Configuration System
 
-Given the ESP32’s limited heap (~300 KB free after boot), the firmware actively manages memory:
+### NVS Storage (Preferences)
 
-- **Periodic cleanup** – every `MEMORY_CLEANUP_INTERVAL` (30 seconds), stale resources are cleaned:
-  - `WiFi.scanDelete()` if a scan is not in progress.
-  - `preferences.end()` / `begin()` to free internal buffers.
-  - A small “heap walk” (allocate/free 512 bytes) to defragment.
-- **Heap monitoring** – every 5 minutes, free heap is checked; if below 20 KB, a cleanup is forced.
-- **Response caching** – `/api/relays` JSON is cached for up to 2 seconds, then regenerated.
-- **Connection timeout** – if no web client activity for 5 minutes, `checkWebServerHealth()` reconfigures the server.
-- **Client pruning** – every minute, the server checks for stale clients and stops them.
+All settings are stored in ESP32's Non-Volatile Storage (NVS):
+
+| Configuration | Size | Description |
+|---------------|------|-------------|
+| `sysConfig` | ~150 bytes | System settings (WiFi, NTP, RTC) |
+| `extConfig` | ~40 bytes | Extended settings (channel, sync interval) |
+| `relayConfigs` | ~3KB | 16 relay configurations with schedules |
+| `gpioConfig` | ~68 bytes | GPIO pin mapping |
+| `criticalState` | ~44 bytes | Last known relay states |
+
+### System Configuration Structure
+
+```cpp
+struct SystemConfig {
+    uint16_t magic;           // Validation (0x1234)
+    uint8_t version;          // Config version (9)
+    char sta_ssid[32];        // WiFi SSID
+    char sta_password[64];    // WiFi password
+    char ap_ssid[32];         // AP SSID
+    char ap_password[32];     // AP password
+    char ntp_server[48];      // NTP server
+    int32_t gmt_offset;       // GMT offset (seconds)
+    int32_t daylight_offset;  // DST offset (seconds)
+    time_t last_rtc_epoch;    // Last RTC epoch
+    float rtc_drift;          // Drift compensation
+    char hostname[32];        // mDNS hostname
+};
+```
+
+### Extended Configuration
+
+```cpp
+struct ExtConfig {
+    uint8_t magic;            // Validation (0xEC)
+    uint8_t ap_channel;       // AP channel (1-13)
+    uint8_t ntp_sync_hours;   // NTP sync interval
+    uint8_t ap_hidden;        // Hidden SSID flag
+    uint8_t global_active_mode; // 0=per-relay, 1=global LOW, 2=global HIGH
+    uint8_t reserved[27];     // Future use
+};
+```
+
+---
+
+## Time Management
+
+### Time Source Hierarchy
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    TIME SOURCE PRIORITY                     │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│   1. NTP Server     ←── Highest accuracy                    │
+│         ↓                                                   │
+│   2. DS3231 RTC     ←── Battery-backed, survives reboot    │
+│         ↓                                                   │
+│   3. Browser Sync   ←── Manual fallback                     │
+│         ↓                                                   │
+│   4. Internal RTC   ←── Least accurate                     │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Drift Compensation
+
+The system automatically calculates and applies drift compensation:
+
+- Compares NTP time against internal RTC over time
+- Maintains running average of drift (0.95-1.05 range)
+- Adjusts time calculations dynamically
+- Saves drift value to NVS for persistence
+
+### RTC Functions
+
+| Function | Description |
+|----------|-------------|
+| `initRTC()` | Initialize DS3231 on I2C (GPIO21/22) |
+| `syncInternalRTC()` | Set internal time from external source |
+| `getCurrentEpoch()` | Get current UTC epoch with drift |
+| `immediateDS3231Sync()` | Force DS3231 update |
+| `performRTCReabase()` | Rebase internal RTC for drift correction |
+
+### NTP Fallback Servers
+
+```cpp
+static const char* NTP_SERVERS[] = {
+    "time.google.com",
+    "time.windows.com", 
+    "time.cloudflare.com",
+    "time.facebook.com"
+};
+```
+
+---
+
+## Schedule Engine
+
+### Schedule Structure
+
+Each relay has **8 independent schedules** with:
+
+```cpp
+struct TimerSchedule {
+    uint8_t startHour[8];     // Start hour (0-23)
+    uint8_t startMinute[8];   // Start minute (0-59)
+    uint8_t startSecond[8];   // Start second (0-59)
+    uint8_t stopHour[8];      // Stop hour (0-23)
+    uint8_t stopMinute[8];    // Stop minute (0-59)
+    uint8_t stopSecond[8];    // Stop second (0-59)
+    bool enabled[8];          // Schedule enabled flag
+    uint8_t days[8];          // Day of week bitmask (0-127)
+    uint32_t monthDays[8];    // Day of month bitmask (0-0x7FFFFFFF)
+};
+```
+
+### Day of Week Bitmask
+
+| Day | Bit | Value | Macro |
+|-----|-----|-------|-------|
+| Sunday | 0 | 1 << 0 | `DAY_SUNDAY` |
+| Monday | 1 | 1 << 1 | `DAY_MONDAY` |
+| Tuesday | 2 | 1 << 2 | `DAY_TUESDAY` |
+| Wednesday | 3 | 1 << 3 | `DAY_WEDNESDAY` |
+| Thursday | 4 | 1 << 4 | `DAY_THURSDAY` |
+| Friday | 5 | 1 << 5 | `DAY_FRIDAY` |
+| Saturday | 6 | 1 << 6 | `DAY_SATURDAY` |
+
+**Predefined Masks:**
+- `DAY_ALL = 0x7F` (Every day)
+- `DAY_WEEKDAYS = 0x3E` (Monday-Friday)
+- `DAY_WEEKENDS = 0x41` (Saturday-Sunday)
+
+### Month Day Bitmask
+
+- Bit 0 = Day 1
+- Bit 1 = Day 2
+- ...
+- Bit 30 = Day 31
+
+**Example**: `0x00000001` = Only 1st day of month
+
+### Schedule Logic
+
+```
+IF schedule enabled AND day matches AND month day matches THEN
+    IF start_time == stop_time:
+        → ALWAYS ON during matching days
+    ELSE IF start_time < stop_time:
+        → ON between start and stop (same day)
+    ELSE:
+        → ON overnight (start → midnight → stop)
+```
+
+### Overnight Schedule Example
+
+| Setting | Value |
+|---------|-------|
+| Start Time | 22:00:00 |
+| Stop Time | 06:00:00 |
+| Days | Monday-Friday |
+| Result | ON from 10 PM to 6 AM next day |
+
+### Schedule Processing
+
+- **Cache Interval**: 1 second (lightweight time checks)
+- **Process Interval**: 250ms (state evaluation)
+- **Debounce Time**: 500ms (prevents relay chatter)
+
+---
+
+## Self-Healing System
+
+### Monitored Components
+
+| Component | Recovery Action | Interval |
+|-----------|----------------|----------|
+| **WiFi** | Auto-reconnect with backoff | 10 seconds |
+| **mDNS** | Service re-announcement | 60 seconds |
+| **DNS** | Live reconfiguration | 60 seconds |
+| **WebServer** | Health verification | 30 seconds |
+| **AP** | Restart if IP is 0.0.0.0 | As needed |
+| **NTP** | Server rotation on failure | 30 seconds |
+| **RTC** | Re-initialization | As needed |
+
+### Critical State Protection
+
+The system saves relay states and manual overrides to NVS:
+
+- **Magic Value**: `0xDEADBEEF` (validation)
+- **Checksum**: XOR of states with timestamp
+- **Save Frequency**: Every 5 minutes if changed
+- **Restoration**: On power-up or after recovery
+
+### Recovery Logic
+
+```cpp
+// Simplified recovery flow
+if (WiFi disconnected && !connecting && !scanning) {
+    health.wifiFailures++;
+    if (health.wifiFailures >= 3) {
+        WiFi.begin(ssid, password);  // Reconnect
+    }
+}
+
+if (mDNS not announced in 5 minutes) {
+    MDNS.addService("http", "tcp", 80);  // Re-announce
+}
+
+// Full health check every 30 minutes
+if (now - lastFullHealthCheck > 30 minutes) {
+    verifyRelayStates();
+    saveCriticalState();
+}
+```
+
+---
+
+## GPIO Management
+
+### Valid GPIO Pins
+
+The ESP32 has specific pins suitable for relay control:
+
+| Available | Unavailable |
+|-----------|-------------|
+| 1, 2, 3, 4, 5 | 6, 7, 8, 9, 10, 11 |
+| 12, 13, 14, 15 | 24 (Crystal) |
+| 18, 19, 21, 22 | 28, 29, 30, 31 (ADC2) |
+| 23, 25, 26, 27 | (ESP32-WROOM-32 specific) |
+| 32, 33 | |
+
+> **Note**: GPIO21 and GPIO22 are reserved for DS3231 RTC I2C.
+
+### Global Active Mode
+
+| Mode | Value | Behavior |
+|------|-------|----------|
+| Per-Relay | 0 | Each relay uses its own activeLow setting |
+| Global LOW | 1 | All relays active when pin LOW |
+| Global HIGH | 2 | All relays active when pin HIGH |
+
+### Active Level Examples
+
+```
+Active LOW (Default):
+- To turn ON relay: digitalWrite(pin, LOW)
+- To turn OFF relay: digitalWrite(pin, HIGH)
+
+Active HIGH:
+- To turn ON relay: digitalWrite(pin, HIGH)
+- To turn OFF relay: digitalWrite(pin, LOW)
+```
+
+### Adding/Removing Relays
+
+1. **Add Relay**: New channel appended with default settings
+2. **Remove Relay**: Shifts higher-numbered relays down
+3. **Schedule Preservation**: Schedules stay with their original relay number
+4. **Maximum Relays**: 16 (hardware limit)
 
 ---
 
 ## Factory Reset
 
-### Hardware Factory Reset (Boot Button)
+### Method 1: Hardware Button (BOOT/GPIO0)
 
-- The BOOT button (GPIO0) is monitored in `loop()`.
-- When pressed and held for **5 seconds**, the firmware:
-  1. Clears all NVS preferences (`preferences.clear()`).
-  2. Calls `initDefaults()` to restore default configuration.
-  3. Reloads GPIO config, system config, extended config.
-  4. Turns all relays OFF.
-  5. Restarts AP and services.
-  6. Tries to reconnect to the previously saved STA (which was cleared, so it will not reconnect).
-- The reset does **not** reboot the ESP32 – all services are reinitialised in‑place.
+1. **Press and hold** the BOOT button
+2. **Continue holding for 5 seconds**
+3. **Release** when you see serial output confirming reset
+4. Device reboots with factory defaults
 
-### API Factory Reset
+### Method 2: Web Interface
 
-- `POST /api/factory-reset` performs the same steps as the hardware reset.
-- Returns a JSON success message; the device remains operational.
+1. Navigate to **System** page
+2. Click **Factory Reset** button
+3. Confirm the action
+4. Device resets without restarting
 
----
+### What Gets Reset
 
-## Persistent Configuration (NVS)
+| Item | Reset Behavior |
+|------|----------------|
+| WiFi Credentials | Cleared (AP mode enabled) |
+| AP Settings | Restored to defaults |
+| NTP Settings | Restored to defaults |
+| Relay Configurations | All schedules cleared |
+| GPIO Pins | Restored to default mapping |
+| mDNS Hostname | Reset to "esp32" |
+| Relay Names | Reset to "Relay X" |
+| Manual Overrides | Cleared |
+| RTC Drift | Reset to 1.0 |
 
-All settings are stored in the **Preferences** library (namespace `relay16`).
+### What Is Preserved
 
-| Key             | Type                 | Description                                                       |
-| --------------- | -------------------- | ----------------------------------------------------------------- |
-| `sysConfig`     | `SystemConfig`       | WiFi STA, AP, NTP, GMT, hostname, last RTC epoch, drift.          |
-| `extConfig`     | `ExtConfig`          | AP channel, NTP sync hours, AP hidden, global active mode.        |
-| `relayConfigs`  | `RelayConfig[16]`    | Schedules (8 slots), manual override, manual state, name.         |
-| `gpioConfig`    | `GPIOPinConfig`      | Pin numbers, active LOW flags, count, magic.                      |
-| `criticalState` | `CriticalRelayState` | Last known manual relay states (for recovery).                    |
-
-All structs have magic numbers and version fields to detect uninitialised or corrupt storage.
-
----
-
-## Health Metrics & Diagnostics
-
-The **System** page (`/system`) shows:
-
-- **STA IP** / **AP IP**
-- **Free heap** (KB)
-- **Uptime** (human‑readable)
-- **WiFi RSSI** with description (Excellent/Good/Fair/Weak)
-- **Time source** (NTP, Browser, RTC, None)
-- **UTC epoch** (raw)
-- **NTP last sync** (age in minutes/hours)
-- **Browser last sync** (age)
-- **Active NTP server**
-- **Chip model**
-- **mDNS hostname** and status
-- **Relay count** (active relays)
-- **GMT offset** (UTC±X)
-- **Drift compensation** value
-- **Global active mode** (Per‑Relay / Global LOW / Global HIGH)
-- **DS3231 RTC presence** (✅ / ❌)
-
-A **“Verify Services”** button calls `POST /api/reset`, which runs `healer.performTargetedRecovery()` – this checks and restores WiFi, mDNS, DNS, web server, and AP without erasing any settings.
+> **Nothing** - Factory reset is a complete wipe of all user settings.
 
 ---
 
-## Limitations & Notes
+## Troubleshooting
 
-- **Maximum relays** – 16 (hardware limit, but can be changed by redefining `MAX_RELAYS` and recompiling).
-- **Schedules** – 8 slots per relay. If more are needed, the JSON transfer size will increase; the ESP32 can handle it, but the web UI may become slower.
-- **Day‑of‑month** – the UI provides 31 buttons (days 1–31). On months with fewer days, the schedule engine still respects the mask but the physical day 31 will never occur in short months.
-- **GPIO restrictions** – Some ESP32 pins have bootstrapping functions (e.g., GPIO12, GPIO0). The list of available pins in the GPIO page excludes problematic ones, but users can still modify the code to include them.
-- **RTC drift compensation** – works best when NTP syncs occur regularly. Without NTP, drift is not corrected; however, the DS3231 has very low drift (≈2 ppm).
-- **Self‑healing** – does **not** reboot the ESP32. In rare cases of complete stack corruption, a hardware watchdog could be added.
-- **Memory** – The firmware compiles to ~1.5 MB of flash; heap usage is typically 100–150 KB, leaving ample room for future extensions.
+### Common Issues and Solutions
+
+#### WiFi Connection Fails
+
+| Symptom | Solution |
+|---------|----------|
+| Wrong password | Use **Scan** feature to verify network exists |
+| Hidden SSID | Enter SSID manually in text field |
+| 2.4GHz only | ESP32 doesn't support 5GHz networks |
+| Signal too weak | Check RSSI value (should be > -80dBm) |
+| DHCP issues | Static IP not supported (DHCP only) |
+
+#### Time Won't Sync
+
+| Symptom | Solution |
+|---------|----------|
+| NTP fails | Use **Sync Browser** button as fallback |
+| Wrong timezone | Verify GMT offset (seconds, not hours) |
+| DST not applying | Set daylight_offset manually |
+| RTC not detected | Check I2C wiring (GPIO21=SDA, GPIO22=SCL) |
+
+#### Relays Not Responding
+
+| Symptom | Solution |
+|---------|----------|
+| Wrong active level | Check GPIO page for Active LOW/HIGH setting |
+| Manual override active | Click **Auto** button to release |
+| Schedule not enabled | Verify checkbox is checked |
+| Wrong day/month | Check day of week and month day selections |
+| Pin conflict | Ensure GPIO not used by other hardware |
+
+#### Web Interface Issues
+
+| Symptom | Solution |
+|---------|----------|
+| Cannot connect | Use AP mode: Connect to ESP32_16CH_Timer_Switch |
+| mDNS not working | Access via IP address directly |
+| Slow response | Check free heap on System page (<20KB = issue) |
+| API timeout | Large schedule data takes time to serialize |
+
+### LED Status Indicators
+
+| Indicator | Color | Meaning |
+|-----------|-------|---------|
+| WiFi Dot | Green | Connected to WiFi |
+| WiFi Dot | Red | WiFi disconnected |
+| Time Source Dot | Green | Time from NTP |
+| Time Source Dot | Blue | Time from Browser/RTC |
+| Time Source Dot | Yellow | No time source |
+
+### Serial Debug Output
+
+```cpp
+// Enable serial debugging (115200 baud)
+// Monitor output includes:
+- Boot sequence information
+- WiFi connection status
+- NTP sync attempts
+- RTC detection
+- GPIO configuration
+- Memory warnings (<20KB free)
+- Recovery actions
+```
 
 ---
 
-## Conclusion
+## Technical Specifications
 
-The **ESP32 16‑Channel Relay Smart Switch** is a production‑ready, feature‑rich automation controller. Its combination of hardware RTC, dual WiFi modes, flexible scheduling, self‑healing, and an intuitive web interface makes it suitable for home, business, and farm automation. The code is well‑structured and can be extended with sensors, MQTT, or custom logic without breaking the core functionality.
+### System Specifications
 
-For updates and support, refer to the [GitHub repository](https://www.github.com/xiv3r).
+| Parameter | Value |
+|-----------|-------|
+| **Max Relays** | 16 |
+| **Schedules per Relay** | 8 |
+| **Schedule Granularity** | Seconds |
+| **NTP Sync Interval** | 1-24 hours (configurable) |
+| **Internal Time Drift** | 0.95 - 1.05 (auto-compensated) |
+| **Schedule Cache Interval** | 1 second |
+| **Relay Debounce Time** | 500ms |
+| **Web Server Port** | 80 |
+| **DNS Server Port** | 53 |
+
+### Memory Usage
+
+| Component | Approximate Size |
+|-----------|------------------|
+| Program Flash | ~250 KB |
+| Global Variables | ~15 KB |
+| NVS Storage | ~3.5 KB |
+| Heap (idle) | ~180 KB |
+| Minimum Free Heap | Configurable warning (20KB) |
+
+### Network Specifications
+
+| Protocol | Details |
+|----------|---------|
+| **WiFi Modes** | STA + AP simultaneously |
+| **AP Channel** | 1-13 (default: 6) |
+| **AP IP** | 192.168.4.1 |
+| **mDNS Service** | `http://esp32.local` |
+| **TCP Timeout** | 10 seconds |
+| **Max WiFi Clients** | 4 |
+
+### Timing Constants
+
+| Operation | Timeout/Interval |
+|-----------|------------------|
+| WiFi Connection | 20 seconds |
+| NTP Request | 5 seconds |
+| NTP Retry | 30 seconds |
+| WiFi Check | 10 seconds |
+| RTC Sync | 60 seconds |
+| RTC Rebase | 5 minutes |
+| NTP Sync Interval | 1 hour (default) |
+| Memory Cleanup | 30 seconds |
+| Critical State Save | 5 minutes (if dirty) |
+
+### Pin Constraints
+
+| GPIO | Constraint |
+|------|------------|
+| 0 | Boot button (factory reset) |
+| 1 | UART0 TX (debug) |
+| 2 | Onboard LED |
+| 3 | UART0 RX |
+| 6-11 | Internal flash |
+| 12 | Boot mode (pull-down) |
+| 21 | I2C SDA (DS3231) |
+| 22 | I2C SCL (DS3231) |
+
+---
+
+## Version History
+
+| Version | Changes |
+|---------|---------|
+| **v9** | Current release |
+| | - Global active mode support |
+| | - Browser time sync fallback |
+| | - Self-healing system enhancements |
+| | - Critical state protection |
+| | - Dynamic GPIO configuration |
+| | - Month-day schedule support |
+| | - Overnight schedule support |
+| | - WiFi scan pause system |
+
+---
+
+## Credits
+
+- **Author**: Raff Alds
+- **GitHub**: [https://github.com/xiv3r](https://github.com/xiv3r)
+- **License**: Open source
+
+---
 
 </details>
 
