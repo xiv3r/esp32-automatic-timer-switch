@@ -679,7 +679,7 @@ For updates and support, refer to the [GitHub repository](https://www.github.com
 </details>
 
 # Customize GPIO Pins
-> Find this line in sketch.ino
+> Find this line inside sketch.ino
 - You can add, remove or reassign the gpio pins
 ```
 // Change GPIO PIN
@@ -708,4 +708,8 @@ const DEFAULT_PINS = [15,2,4,5,18,19,3,1,23,13,14,27,26,25,33,32];
 // Change GPIO PIN
 int validPins[] = {15, 2, 4, 5, 18, 19, 3, 1, 23, 13, 14, 27, 26, 25, 33, 32};
 ```
+
+# Build Firmware
+>  Auto Build firmware binaries using github action
+- https://github.com/xiv3r/arduino
 
