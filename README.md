@@ -6,13 +6,13 @@
 - DS3231 RTC Module (recommended)
 - 1-16 Channel 5V Relay
 - Female to Female Dupont Wire
-- Stable Wifi Connection for NTP/RTC sync
+- Stable Wifi Connection for NTP/RTC sync (without ds3231)
 - 5v 3-5a Power supply
   
 `Optional`
 - 5v UPS (Maintain RTC Time without DS3231)
 - Solid State Relay (SSR DC-AC) (High Load Setup)
-- mini cooling fan
+- mini cooling fan (stay esp32 cool)
 
 # Libraries
 - ArduinoJson
@@ -20,15 +20,11 @@
 - RTClib 1.14.1
 
 # Installation
-- Download the [Firmware](https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/esp32) and flash.
-- Offset address
-```
-firmware : 0x0
-```
+> ⚠️ Download and install 
 ### ESP32 Win/Linux Drivers
 - CH340G: https://sparks.gogo.co.nz/ch340.html
 - CP2102: https://www.silabs.com/software-and-tools/usb-to-uart-bridge-vcp-drivers?tab=downloads
-
+## Flasher
 ### Android (otg)
 - https://play.google.com/store/apps/details?id=io.serialflow.espflash
 ### Windows
@@ -39,37 +35,43 @@ esptool --port <PORT> write_flash 0x0 esp32-firmware-0x0.bin
 ```
 ### Win/Linux Browser
 - https://g3gg0.github.io/esp32_flasher/flasher.html
-
-<br>
+### Flash firmware 
+- Download the [Firmware](https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/esp32) and flash.
+- Offset address
+```
+firmware: 0x0
+```
 
 # WiFi Key
 - WiFi SSID: `ESP32_16CH_Timer_Switch`
 - Password: `ESP32-admin`
 
-# Activation
-- Go to `wifi settings` and connect to your home wifi after the NTP is synchronized everything will work
+# Active
+> First time setup
+° Online
+- Go to `Wifi settings` and connect to your home wifi then everything will work
+° Offline
+- Go to `Time settings` and click `Sync Browser ` then everything will work
 
 # Relay Naming 
 - Double click relay name to edit
 
-# GMT offset
-> ⚠️ Set to your country time
-- Search your country `gmt offsets in seconds` and paste it in the Time -> GMT Offset
+# Set Time (country)
+> ⚠️ Set to your country time e.g for PH (UTC+8.0) 288000 seconds
+- Search your country `gmt offsets in seconds` and paste to the Time -> GMT Offset
 
 # Access
-° Direct Access
-- mDNS:`esp32-16ch-timer.local`
-- Captive Portal: Auto redirect
+- mDNS:`esp32-16ch-timer-switch.local`
+- Captive Portal: `Auto redirect`
 - Gateway:`192.168.4.1`
 - WAN:`192.168.1.123`
-  
 ° Global:`Enable Port Forwarding on your router to access anywhere`
 
 # Reset
-- Hold BOOT button for 5 seconds
+- Hold BOOT button for 5 seconds to factory reset 
 
 # Restart
-- Press EN button
+- Press EN button to restart
 
 # 16 CHANNEL GPIO Connection 
 ```
