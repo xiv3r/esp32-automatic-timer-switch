@@ -46,7 +46,7 @@ firmware: 0x0
 - WiFi SSID: `ESP32_16CH_Timer_Switch`
 - Password: `ESP32-admin`
 
-# Active
+# Activate 
 > First time setup
 
 ° Online
