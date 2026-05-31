@@ -48,8 +48,10 @@ firmware: 0x0
 
 # Active
 > First time setup
+
 ° Online
 - Go to `Wifi settings` and connect to your home wifi then everything will work
+
 ° Offline
 - Go to `Time settings` and click `Sync Browser ` then everything will work
 
@@ -57,7 +59,7 @@ firmware: 0x0
 - Double click relay name to edit
 
 # Set Time (country)
-> ⚠️ Set to your country time e.g for PH (UTC+8.0) 288000 seconds
+> ⚠️ Set to your country time e.g for PH (UTC+8.0) 28800 seconds
 - Search your country `gmt offsets in seconds` and paste to the Time -> GMT Offset
 
 # Access
