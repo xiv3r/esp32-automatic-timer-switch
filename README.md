@@ -12,6 +12,7 @@
 `Optional`
 - 5v UPS (Maintain RTC Time without DS3231)
 - Solid State Relay (SSR DC-AC) (High Load Setup)
+- mini cooling fan
 
 # Libraries
 - ArduinoJson
