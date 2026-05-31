@@ -30,15 +30,17 @@ firmware : 0x0
 - CP2102: https://www.silabs.com/software-and-tools/usb-to-uart-bridge-vcp-drivers?tab=downloads
 
 ### Android (otg)
-https://play.google.com/store/apps/details?id=io.serialflow.espflash
-
+- https://play.google.com/store/apps/details?id=io.serialflow.espflash
 ### Windows
-https://dl.espressif.com/public/flash_download_tool.zip
-
+- https://dl.espressif.com/public/flash_download_tool.zip
 ### Linux
-```
+```sh
 esptool --port <PORT> write_flash 0x0 esp32-firmware-0x0.bin
 ```
+### Win/Linux Browser
+- https://g3gg0.github.io/esp32_flasher/flasher.html
+
+<br>
 
 # WiFi Key
 - WiFi SSID: `ESP32_16CH_Timer_Switch`
