@@ -16,10 +16,9 @@
 
 # Installation
 - Download the [Firmware](https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/esp32s3) and flash.
-
 - Offset address
 ```
-firmware: 0x0
+esp32s3-dump-0x0.bin: 0x0
 ```
 # Wifi Key
 - Wifi Name:`ESP32_S3_16CH_Timer_Switch`
