@@ -1,4 +1,6 @@
-# ESP8266
+# ⚠️ Kindly synchronize your fork for the latest updates.
+
+## ESP8266
 👉 https://github.com/xiv3r/esp8266-automatic-timer-switch
 
 # Requirements
