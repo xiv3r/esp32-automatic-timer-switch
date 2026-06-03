@@ -936,6 +936,7 @@ Active HIGH:
 // Change GPIO PIN
 const DEFAULT_PINS = [15,2,4,5,18,19,3,1,23,13,14,27,26,25,33,32];
 ```
+> You can add more gpio pins like `16, 17, 21, 22` in int validPins.
 ```
 // Change GPIO PIN
 int validPins[] = {15, 2, 4, 5, 18, 19, 3, 1, 23, 13, 14, 27, 26, 25, 33, 32};
