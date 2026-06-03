@@ -1,13 +1,14 @@
 # Requirements
 - 5V 1-16 Channel Relay
 - ESP32-S3 N16R8 (16mb flash 8mb ram)
-- DS3231 RTC Module
+- DS3231 RTC Module (offline recommended)
 - F-F Dupont Wires
-- Stabe Wifi Connection
+- Stabe Wifi Connection (opt. if no ds3231)
 - 5V 3-5A Power Supply
 
 `optional`
-- 5v UPS (Maintain time without DS3231)
+- 5v UPS (Maintain Internal RTC time without DS3231 or NTP)
+- mini cooling fan (stay esp32s3 cool)
 
 # Libraries
 - ArduinoJson
@@ -29,11 +30,10 @@ esp32s3-dump-0x0.bin: 0x0
 
 # Access
 ° Direct Access
-- mDNS:`esp32-s3-16ch-timer.local`
-- Captive Portal: Auto redirect
+- mDNS:`esp32-s3-16ch-timer-switch.local`
+- Captive Portal:`Auto redirect`
 - Gateway:`192.168.4.1`
 - WAN:`192.168.1.123`
-  
 ° Global:`Enable esp32 s3 Port Forwarding on your router to access anywhere`
 
 # Reset
