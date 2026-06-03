@@ -19,15 +19,18 @@ jobs:
       run: |
         mkdir -p downloads
         cd downloads
-        wget -O esp32s3-firmware-0x0.bin https://github.com/xiv3r/arduino/releases/download/firmware/arduino.ino.merged.bin
-                   
+        wget -O esp32-dump-0x0.bin https://github.com/xiv3r/arduino/releases/download/firmware/arduino.ino.merged.bin
+        wget -O esp32-bootloader-0x1000.bin https://github.com/xiv3r/arduino/releases/download/firmware/arduino.ino.bootloader.bin
+        wget -O esp32-partitions-0x8000.bin https://github.com/xiv3r/arduino/releases/download/firmware/arduino.ino.partitions.bin
+        wget -O esp32-firmware-0x10000.bin https://github.com/xiv3r/arduino/releases/download/firmware/arduino.ino.bin
+        
     - name: Determine release tag
       id: get_tag
       run: |
         if [ "${{ github.event_name }}" == "release" ]; then
           TAG_NAME="${{ github.event.release.tag_name }}"
         else
-          TAG_NAME="esp32s3"
+          TAG_NAME="esp32"
         fi
         echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
 
