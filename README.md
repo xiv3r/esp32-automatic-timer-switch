@@ -39,7 +39,7 @@ esptool --port <PORT> write_flash 0x0 esp32-firmware-0x0.bin
 - Download the [Firmware](https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/esp32) and flash.
 - Offset address
 ```
-firmware: 0x0
+esp32-dump-0x0.bin: 0x0
 ```
 
 # WiFi Key
