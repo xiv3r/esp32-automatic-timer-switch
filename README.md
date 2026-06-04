@@ -94,6 +94,15 @@ IN15 _____ 33  Relay 15
 IN16 _____ 32  Relay 16
 GND  _____ GND
 ```
+- Extra gpio pins
+> Max 16 relays, Reserves only for gpio pin reassignment 
+```
+IN17 _____ 16  Relay 17
+IN18 _____ 17  Relay 18
+IN19 _____ 21  Relay 19 (assign if no ds3231)
+IN20 _____ 22  Relay 20 (assign if no ds3231)
+```
+
 # DS3231 GPIO Connection 
 ```
 DS3231 | ESP32 38P
