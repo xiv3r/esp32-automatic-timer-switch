@@ -20,7 +20,7 @@ jobs:
         mkdir -p downloads
         cd downloads
         wget -O esp32-dump-0x0.bin https://github.com/xiv3r/arduino/releases/download/firmware/arduino.ino.merged.bin
-        wget -O esp32-bootloader-0x0.bin https://github.com/xiv3r/arduino/releases/download/firmware/arduino.ino.bootloader.bin
+        wget -O esp32-bootloader-0x1000.bin https://github.com/xiv3r/arduino/releases/download/firmware/arduino.ino.bootloader.bin
         wget -O esp32-partitions-0x8000.bin https://github.com/xiv3r/arduino/releases/download/firmware/arduino.ino.partitions.bin
         wget -O esp32-firmware-0x10000.bin https://github.com/xiv3r/arduino/releases/download/firmware/arduino.ino.bin
         
