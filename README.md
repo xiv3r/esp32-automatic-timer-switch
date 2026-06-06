@@ -42,8 +42,8 @@ esp32-dump-0x0.bin: 0x0
 # WiFi Key
 - WiFi SSID: `ESP32_16CH_Timer_Switch`
 - Password: `ESP32-admin`
-
-# Activate 
+  
+# Activation
 > First time setup
 
 ° Online
@@ -65,6 +65,9 @@ esp32-dump-0x0.bin: 0x0
 - Gateway:`192.168.4.1`
 - WAN:`192.168.1.123`
 ° Global:`Enable Port Forwarding on your router to access anywhere`
+
+# ⚠️ Note
+- Avoid connecting to a wrong open wifi SSID to avoid hang issue. Solution turn off wifi station mode.
 
 # Reset
 - Hold BOOT button for 5 seconds to factory reset 
