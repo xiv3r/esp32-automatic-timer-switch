@@ -67,7 +67,7 @@ esp32-dump-0x0.bin: 0x0
 ° Global:`Enable Port Forwarding on your router to access anywhere`
 
 # ⚠️ Note
-- Avoid connecting to a wrong open wifi SSID to avoid hang issue. Solution turn off wifi station mode.
+- Avoid connecting to a wrong open wifi network SSID to prevent hang issue. Solution turn off wifi station mode.
 
 # Reset
 - Hold BOOT button for 5 seconds to factory reset 
