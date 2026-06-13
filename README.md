@@ -1,15 +1,16 @@
 # Requirements
-- ESP32 38P Pins
-- DS3231 RTC Module (recommended)
-- 1-16 Channel 5V Relay
+- ESP32 30/38P Pins
+- DS3231 RTC Module (recommend)
+- 5v 1-16 Channel Relay
 - Female to Female Dupont Wire
-- Stable Wifi Connection for NTP/RTC sync (without ds3231)
+- Stable Wifi Connection for NTP/RTC sync (optional if no ds3231)
 - 5v 3-5a Power supply
+
+> without ds3231 or wifi the time runs from internal rtc
   
 `Optional`
 - 5v UPS (Maintain RTC Time without DS3231)
 - Solid State Relay (SSR DC-AC) (High Load Setup)
-- mini cooling fan (stay esp32 cool)
 
 # Libraries
 - ArduinoJson
@@ -77,7 +78,7 @@ esp32-dump-0x0.bin: 0x0
 
 # 16 CHANNEL GPIO Connection 
 ```
-RELAY  |  ESP32 38P
+RELAY  |  ESP32 30/38P
 VCC  _____ 5VIN 
 IN1  _____ 15  Relay 1
 IN2  _____ 2   Relay 2
