@@ -75,13 +75,18 @@ esp32-dump-0x0.bin: 0x0
 # Isolate Power
 </summary>
 
-· Remove the Yellow VCC-JDVCC jumper.
+### 5V
+- Remove the Yellow VCC-JDVCC jumper.
+- Relay JD-VCC pin: Connect to external 5V Positive wire.
+- Relay GND pin: Connect to external 5V Negative wire.
+- Relay VCC pin: Connect to ESP32 5V (powers the LED).
 
-· Relay JD-VCC pin: Connect to external 5V Positive wire.
+### 12V
+- Remove the Yellow VCC-JDVCC jumper.
+- Relay JD-VCC pin: Connect to external 12V Positive wire.
+- Relay GND pin: Connect to external 12V Negative wire.
+- Relay VCC pin: Connect to ESP32 5V (powers the LED).
 
-· Relay GND pin: Connect to external 5V Negative wire.
-
-· Relay VCC pin: Connect to ESP32 5V (powers the LED).
 </details>
 
 # Reset
