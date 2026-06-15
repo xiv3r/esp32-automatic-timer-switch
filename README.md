@@ -1,4 +1,4 @@
-# Requirements
+## Requirements
 - ESP32 30/38P Pins
 - DS3231 RTC Module (recommend)
 - 5v 1-16 Channel Relay
@@ -10,12 +10,12 @@
 - 5v UPS (Maintain RTC Time without DS3231)
 - Solid State Relay (SSR DC-AC) (High Load Setup)
 
-# Arduino Libraries
+## Arduino Libraries
 - ArduinoJson
 - NTPClient
 - RTClib v1.14.1
 
-# Installation
+## Installation
 > Download and install 
 ### ESP32 Win/Linux Drivers
 - CH340G: https://sparks.gogo.co.nz/ch340.html
@@ -38,41 +38,39 @@ esptool --port <PORT> write_flash 0x0 esp32-firmware-0x0.bin
 esp32-dump-0x0.bin: 0x0
 ```
 
-# WiFi Key
+## WiFi Key
 - WiFi SSID: `ESP32_16CH_Timer_Switch`
 - Password: `ESP32-admin`
   
-# Activation
-> without ds3231 or wifi the time runs from internal rtc
-> 
-> For first time setup
+## Activation
+> - Without ds3231 or wifi the time runs from internal rtc
 
 ° Online
-- Go to `Wifi settings` and connect to your home wifi then everything will work
+- Go to `Wifi settings` and connect to your home wifi then everything will work.
 
 ° Offline
 - Go to `Time settings` and click `Sync Browser ` then everything will work
 
-# Relay Naming 
+## Relay Naming 
 - Double click relay name to edit
 
-# Set Time (country)
+## Set the Time (country)
 > Set to your country time e.g for PH (UTC+8.0) 28800 seconds
 - Search your country `gmt offsets in seconds` and paste to the Time -> GMT Offset
 
-# Access
+## Access
 - mDNS:`esp32-16ch-timer-switch.local`
 - Captive Portal: `Auto redirect`
 - Gateway:`192.168.4.1`
 - WAN:`192.168.1.123`
 ° Global:`Enable Port Forwarding on your router to access anywhere`
 
-# Note
+## Note
 - Avoid connecting to a non-existed open wifi network SSID to prevent hang issue. Solution turn off wifi station mode.
 
 <details><summary>
 
-# Isolate Power
+## Isolate Power
 </summary>
 > ⚠️ Use the Main relay power input and Avoid using VCC and GND from the relay IN GPIO Pin row
 
@@ -90,13 +88,13 @@ esp32-dump-0x0.bin: 0x0
 
 </details>
 
-# Reset
+## Reset
 - Hold BOOT button for 5 seconds to factory reset 
 
-# Restart
+## Restart
 - Press EN button to restart
 
-# 16 CHANNEL GPIO Connection 
+## 16 CHANNEL RELAY GPIO Connection 
 ```
 RELAY  |  ESP32 30/38P
 VCC  _____ 5VIN 
@@ -118,14 +116,8 @@ IN15 _____ 33  Relay 15
 IN16 _____ 32  Relay 16
 GND  _____ GND
 ```
-- Extra gpio pins
-> Max 16 relays, Reserves only for gpio pin reassignment 
-```
-IN17 _____ 16  Relay 17
-IN18 _____ 17  Relay 18
-```
 
-# DS3231 GPIO Connection 
+## DS3231 GPIO Connection 
 ```
 DS3231 | ESP32 38P
 VCC → 3.3V
