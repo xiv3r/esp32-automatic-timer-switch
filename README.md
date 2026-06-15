@@ -63,7 +63,7 @@ esp32-dump-0x0.bin: 0x0
 - Captive Portal: `Auto redirect`
 - Gateway:`192.168.4.1`
 - WAN:`192.168.1.123`
-° Global:`Enable Port Forwarding on your router to access anywhere`
+- Global:`Enable Port Forwarding on your router to access anywhere`
 
 ## Note
 - Avoid connecting to a non-existed open wifi network SSID to prevent hang issue. Solution turn off wifi station mode.
