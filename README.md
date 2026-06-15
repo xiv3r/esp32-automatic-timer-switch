@@ -18,7 +18,7 @@
 - RTClib 1.14.1
 
 # Installation
-> ⚠️ Download and install 
+> Download and install 
 ### ESP32 Win/Linux Drivers
 - CH340G: https://sparks.gogo.co.nz/ch340.html
 - CP2102: https://www.silabs.com/software-and-tools/usb-to-uart-bridge-vcp-drivers?tab=downloads
@@ -57,7 +57,7 @@ esp32-dump-0x0.bin: 0x0
 - Double click relay name to edit
 
 # Set Time (country)
-> ⚠️ Set to your country time e.g for PH (UTC+8.0) 28800 seconds
+> Set to your country time e.g for PH (UTC+8.0) 28800 seconds
 - Search your country `gmt offsets in seconds` and paste to the Time -> GMT Offset
 
 # Access
@@ -67,8 +67,8 @@ esp32-dump-0x0.bin: 0x0
 - WAN:`192.168.1.123`
 ° Global:`Enable Port Forwarding on your router to access anywhere`
 
-# ⚠️ Note
-- Avoid connecting to a wrong open wifi network SSID to prevent hang issue. Solution turn off wifi station mode.
+# Note
+- Avoid connecting to a non-existed open wifi network SSID to prevent hang issue. Solution turn off wifi station mode.
 
 # Reset
 - Hold BOOT button for 5 seconds to factory reset 
