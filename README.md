@@ -6,16 +6,14 @@
 - Stable Wifi Connection for NTP/RTC sync (optional if no ds3231)
 - 5v 3-5a Power supply
 
-> without ds3231 or wifi the time runs from internal rtc
-  
 `Optional`
 - 5v UPS (Maintain RTC Time without DS3231)
 - Solid State Relay (SSR DC-AC) (High Load Setup)
 
-# Libraries
+# Arduino Libraries
 - ArduinoJson
 - NTPClient
-- RTClib 1.14.1
+- RTClib v1.14.1
 
 # Installation
 > Download and install 
@@ -35,7 +33,7 @@ esptool --port <PORT> write_flash 0x0 esp32-firmware-0x0.bin
 - https://g3gg0.github.io/esp32_flasher/flasher.html
 ### Flash firmware 
 - Download the [Firmware](https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/esp32) and flash.
-- Offset address
+- Flash Offset
 ```
 esp32-dump-0x0.bin: 0x0
 ```
@@ -45,7 +43,9 @@ esp32-dump-0x0.bin: 0x0
 - Password: `ESP32-admin`
   
 # Activation
-> First time setup
+> without ds3231 or wifi the time runs from internal rtc
+> 
+> For first time setup
 
 ° Online
 - Go to `Wifi settings` and connect to your home wifi then everything will work
@@ -69,6 +69,20 @@ esp32-dump-0x0.bin: 0x0
 
 # Note
 - Avoid connecting to a non-existed open wifi network SSID to prevent hang issue. Solution turn off wifi station mode.
+
+<details><summary>
+
+# Isolate Power
+</summary>
+
+· Remove the Yellow VCC-JDVCC jumper.
+
+· Relay JD-VCC pin: Connect to external 5V Positive wire.
+
+· Relay GND pin: Connect to external 5V Negative wire.
+
+· Relay VCC pin: Connect to ESP32 5V (powers the LED).
+</details>
 
 # Reset
 - Hold BOOT button for 5 seconds to factory reset 
