@@ -72,6 +72,7 @@ esp32-dump-0x0.bin: 0x0
 
 ## Isolate Power
 </summary>
+
 > ⚠️ Use the Main relay power input and Avoid using VCC and GND from the relay IN GPIO Pin row
 
 ### 5V
