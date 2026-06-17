@@ -15,9 +15,9 @@ jobs:
 
     - name: Install Arduino-cli
       run: |
-        sudo apt update
+        sudo apt update 
         sudo apt install wget -y
-
+        
         # Arduino-Cli Debian package
         wget -O arduino-cli.deb https://github.com/arduino/arduino-cli/releases/download/v1.5.0/arduino-cli_1.5.0-1_amd64.deb
         sudo dpkg -i arduino-cli.deb
@@ -31,6 +31,7 @@ jobs:
         
         # Install libraries
         arduino-cli lib install "ArduinoJson"
+        arduino-cli lib install "PubSubClient"
         arduino-cli lib install "NTPClient"
         git clone --depth 1 --branch 1.14.1 https://github.com/adafruit/RTClib.git ~/Arduino/libraries/RTClib
 
