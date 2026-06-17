@@ -70,18 +70,18 @@ esp32-dump-0x0.bin: 0x0
 
 <details><summary>
 
-## Isolate Power
+## Isolate Relay Power
 </summary>
 
 > ⚠️ Use the Main relay power input and Avoid using VCC and GND from the relay IN GPIO Pin row
 
-### 5V
+### 5V Relay
 - Remove the Yellow VCC-JDVCC jumper.
 - Relay JD-VCC pin: Connect to external 5V Positive wire.
 - Relay GND pin: Connect to external 5V Negative wire.
 - Relay VCC pin: Connect to ESP32 5V (powers the LED).
 
-### 12V
+### 12V Relay
 - Remove the Yellow VCC-JDVCC jumper.
 - Relay JD-VCC pin: Connect to external 12V Positive wire.
 - Relay GND pin: Connect to external 12V Negative wire.
