@@ -44,7 +44,7 @@ jobs:
         if [ "${{ github.event_name }}" == "release" ]; then
           TAG_NAME="${{ github.event.release.tag_name }}"
         else
-          TAG_NAME="esp32-mqtt"
+          TAG_NAME="esp32s3-mqtt"
         fi
         echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
 
