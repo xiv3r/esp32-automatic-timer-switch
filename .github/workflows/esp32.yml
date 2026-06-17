@@ -36,6 +36,7 @@ jobs:
         git clone --depth 1 --branch 1.14.1 https://github.com/adafruit/RTClib.git ~/Arduino/libraries/RTClib
 
         # Compile firmware
+        mv esp32-sketch.ino esp32-automatic-timer-switch.ino
         arduino-cli compile --fqbn esp32:esp32:esp32 --clean --output-dir firmware .
          
     - name: Determine release tag
