@@ -12,6 +12,7 @@
 
 ## Arduino Libraries
 - ArduinoJson
+- PubSubClient 
 - NTPClient
 - RTClib v1.14.1
 
