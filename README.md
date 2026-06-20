@@ -6,7 +6,7 @@
 - 5v 3-5a Power supply
 
 `Optional`
-- 5v UPS (Maintain RTC Time without DS3231)
+- 5v UPS (Maintain RTC Time without DS3231 or NTP)
 - Solid State Relay (SSR DC-AC) (High Load Setup)
 - ESP32 Expansion Board
 - Stable Wifi Connection for NTP/RTC sync (online if no ds3231)
@@ -48,12 +48,13 @@ esp32-dump-0x0.bin: 0x0
 > - Without ds3231 or wifi the time runs from internal rtc
 
 ° Online
-- Go to `Wifi settings` and connect to your home wifi then everything will work.
+- Go to `Wifi settings` and connect to your home wifi to set the rtc time automatically
 
 ° Offline
-- Go to `Time settings` and click `Sync Browser ` then everything will work
+- Go to `Time settings` and tap `Sync Browser ` to set the rtc time
 
 ## Relay Naming 
+> mobile mode
 - Double click relay name to edit
 
 ## Set the Time (country)
