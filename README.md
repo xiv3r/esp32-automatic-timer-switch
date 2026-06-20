@@ -1,15 +1,15 @@
 ## Requirements
 - ESP32 30/38P Pins
-- DS3231 RTC Module (recommend)
+- DS3231 RTC Module (offline recommend)
 - 5v 1-16 Channel Relay
 - Female to Female Dupont Wire
-- Stable Wifi Connection for NTP/RTC sync (optional if no ds3231)
 - 5v 3-5a Power supply
 
 `Optional`
 - 5v UPS (Maintain RTC Time without DS3231)
 - Solid State Relay (SSR DC-AC) (High Load Setup)
 - ESP32 Expansion Board
+- Stable Wifi Connection for NTP/RTC sync (online if no ds3231)
 
 ## Arduino Libraries
 - ArduinoJson
@@ -68,6 +68,7 @@ esp32-dump-0x0.bin: 0x0
 - Global:`Enable Port Forwarding on your router to access anywhere`
 
 ## Note
+- Disable Wifi Station Mode if you have a DS3231
 - Avoid connecting to a non-existed open wifi network SSID to prevent hang issue. Solution turn off wifi station mode.
 
 <details><summary>
