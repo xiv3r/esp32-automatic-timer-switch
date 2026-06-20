@@ -2,22 +2,23 @@
 - 5V 1-16 Channel Relay
 - ESP32-S3 N16R8 (16mb flash 8mb ram)
 - DS3231 RTC Module (offline recommended)
-- F-F Dupont Wires
+- Female to Female Dupont Wires
 - Stabe Wifi Connection (opt. if no ds3231)
-- 5V 3-5A Power Supply
+- 5V 2-5A Power Supply
 
-`optional`
+`Optional`
 - 5v UPS (Maintain Internal RTC time without DS3231 or NTP)
-- Mini cooling fan (stay esp32s3 cool)
+- ESP32-S3 Expansion board
 
 # Libraries
 - ArduinoJson
+- PubSubClient
 - NTPClient
 - RTCLib 1.14.1
 
 # Installation
 - Download the [Firmware](https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/esp32s3) and flash.
-- Offset address
+- Flash Offset
 ```
 esp32s3-dump-0x0.bin: 0x0
 ```
@@ -26,22 +27,25 @@ esp32s3-dump-0x0.bin: 0x0
 - Password:`ESP32-admin`
 
 # Setup
-- Go to `192.168.4.1 –> wifi` then connect your ESP32-S3 to your Home Wifi
+> online
+- Go to `192.168.4.1 –> wifi` then connect to your Home Wifi to set rtc time automatically 
+
+> offline
+- Go to `192.168.4.1 -> Time` then tap sync browser to set the rtc time 
 
 # Access
-° Direct Access
 - mDNS:`esp32-s3-16ch-timer-switch.local`
 - Captive Portal:`Auto redirect`
 - Gateway:`192.168.4.1`
 - WAN:`192.168.1.123`
-° Global:`Enable esp32 s3 Port Forwarding on your router to access anywhere`
+- Global:`Enable esp32 s3 Port Forwarding on your router to access anywhere`
 
 # Reset
 - Hold BOOT button for 5 seconds
 
 # 16 Channel GPIO Connection
 ```
-16CH | ESP32-S3 N16R8
+16CH   |   ESP32-S3 N16R8
 VCC  _____ 5V
 IN1  _____ 1   Relay 1
 IN2  _____ 2   Relay 2
