@@ -19,7 +19,7 @@ jobs:
         sudo apt install wget -y
         
         # Arduino-Cli Debian package
-        wget -O arduino-cli.deb https://github.com/arduino/arduino-cli/releases/download/v1.5.0/arduino-cli_1.5.0-1_amd64.deb
+        wget -O arduino-cli.deb https://github.com/arduino/arduino-cli/releases/download/v1.5.1/arduino-cli_1.5.1-1_amd64.deb
         sudo dpkg -i arduino-cli.deb
         sudo apt --fix-broken install -y
         sudo dpkg --configure -a
