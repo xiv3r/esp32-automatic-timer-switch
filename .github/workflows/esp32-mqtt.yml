@@ -35,7 +35,7 @@ jobs:
 
         # Compile Firmware
         cd ESP32-MQTT
-        mv esp32-mqtt.ino ESP32-MQTT.ino
+        mv *.ino ESP32-MQTT.ino
         arduino-cli compile --fqbn esp32:esp32:esp32 --clean --output-dir firmware .
          
     - name: Determine release tag
