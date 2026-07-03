@@ -3,7 +3,7 @@
 - DS3231 RTC Module (offline recommend)
 - 5v 1-16 Channel Relay
 - Female to Female Dupont Wire
-- 5v 3-5a Power supply
+- 5v 2-5a Power supply
 
 `Optional`
 - 5v UPS (Maintain RTC Time without DS3231 or NTP)
@@ -34,7 +34,9 @@ esptool --port <PORT> write_flash 0x0 esp32-firmware-0x0.bin
 ### Win/Linux Browser
 - https://g3gg0.github.io/esp32_flasher/flasher.html
 ### Flash firmware 
-- Download the [Firmware](https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/esp32) and flash.
+- Download the Firmware and Flash
+
+https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/esp32
 - Flash Offset
 ```
 esp32-dump-0x0.bin: 0x0
