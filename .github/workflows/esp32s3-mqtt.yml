@@ -39,11 +39,11 @@ jobs:
         arduino-cli compile --fqbn esp32:esp32:esp32s3:FlashSize=16M,PSRAM=opi --clean --output-dir firmware .
 
         # Rename
-        mv firmware/ESP32-S3-MQTT.ino.bin firmware/esp32s3mqtt-firmware-0x10000.bin
-        mv firmware/ESP32-S3-MQTT.ino.bootloader.bin firmware/esp32s3mqtt-bootloader-0x0.bin
-        mv firmware/ESP32-S3-MQTT.ino.merged.bin firmware/esp32s3mqtt-dump-0x0.bin
-        mv firmware/ESP32-S3-MQTT.ino.partitions.bin firmware/esp32s3mqtt-partitions-0x8000.bin
-         
+        mv firmware/*.ino.bin             firmware/esp32s3mqtt-firmware-0x10000.bin
+        mv firmware/*.ino.bootloader.bin  firmware/esp32s3mqtt-bootloader-0x0.bin
+        mv firmware/*.ino.merged.bin      firmware/esp32s3mqtt-dump-0x0.bin
+        mv firmware/*.ino.partitions.bin  firmware/esp32s3mqtt-partitions-0x8000.bin
+        
     - name: Determine release tag
       id: get_tag
       run: |
