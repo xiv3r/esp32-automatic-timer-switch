@@ -30,7 +30,7 @@
 - https://dl.espressif.com/public/flash_download_tool.zip
 ### Linux
 ```sh
-esptool --port <PORT> write_flash 0x0 esp32-firmware-0x0.bin
+esptool --port <PORT> write_flash 0x0 esp32-dump-0x0.bin
 ```
 ### Win/Linux Browser
 - https://g3gg0.github.io/esp32_flasher/flasher.html
