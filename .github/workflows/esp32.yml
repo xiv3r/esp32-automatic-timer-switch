@@ -38,7 +38,13 @@ jobs:
         # Compile firmware
         mv *.ino esp32-automatic-timer-switch.ino
         arduino-cli compile --fqbn esp32:esp32:esp32 --clean --output-dir firmware .
-         
+        
+        # Rename
+        mv firmware/*.ino.bin             firmware/esp32-firmware-0x10000.bin
+        mv firmware/*.ino.bootloader.bin  firmware/esp32-bootloader-0x1000.bin
+        mv firmware/*.ino.merged.bin      firmware/esp32-dump-0x0.bin
+        mv firmware/*.ino.partitions.bin  firmware/esp32-partitions-0x8000.bin
+        
     - name: Determine release tag
       id: get_tag
       run: |
