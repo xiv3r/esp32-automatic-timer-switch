@@ -22,6 +22,7 @@
 ### ESP32 Win/Linux Drivers
 - CH340G: https://sparks.gogo.co.nz/ch340.html
 - CP2102: https://www.silabs.com/software-and-tools/usb-to-uart-bridge-vcp-drivers?tab=downloads
+- FT232: https://ftdichip.com/wp-content/uploads/2025/03/CDM-v2.12.36.20-Universal-Driver-for-x64-WHQL-Certified.zip
 ## Flasher
 ### Android (otg)
 - https://play.google.com/store/apps/details?id=io.serialflow.espflash
@@ -35,8 +36,7 @@ esptool --port <PORT> write_flash 0x0 esp32-firmware-0x0.bin
 - https://g3gg0.github.io/esp32_flasher/flasher.html
 ### Flash firmware 
 - Download the Firmware and Flash
-
-https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/esp32
+- https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/esp32
 - Flash Offset
 ```
 esp32-dump-0x0.bin: 0x0
