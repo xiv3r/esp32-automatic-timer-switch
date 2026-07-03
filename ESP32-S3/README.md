@@ -17,7 +17,9 @@
 - RTCLib 1.14.1
 
 # Installation
-- Download the [Firmware](https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/esp32s3) and flash.
+- Download the Firmware and Flash
+
+https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/esp32s3
 - Flash Offset
 ```
 esp32s3-dump-0x0.bin: 0x0
