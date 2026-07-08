@@ -1,113 +1,43 @@
-## **43,200 seconds (UTC-12)**
-United States (Baker Island, Howland Island)
+# Countries and Territories by Standard GMT (UTC) Offset
 
-## **39,600 seconds (UTC-11)**
-United States (American Samoa, Midway), New Zealand (Niue)
-
-## **36,000 seconds (UTC-10)**
-United States (Hawaii, most Aleutians), France (French Polynesia: Society, Tuamotu, Austral), New Zealand (Cook Islands)
-
-## **34,200 seconds (UTC-09:30)**
-France (French Polynesia: Marquesas)
-
-## **32,400 seconds (UTC-09)**
-France (French Polynesia: Gambier), United States (most of Alaska)
-
-## **28,800 seconds (UTC-08)**
-Canada (British Columbia most, Yukon), Mexico (Baja California), United States (California, Washington, Oregon most, Nevada most), UK (Pitcairn), France (Clipperton)
-
-## **25,200 seconds (UTC-07)**
-Canada (Alberta, NWT), Mexico (Sonora, Sinaloa, Nayarit, Baja California Sur, Chihuahua), United States (Arizona most, Colorado, New Mexico, etc.)
-
-## **21,600 seconds (UTC-06)**
-Belize, Canada (Saskatchewan most, Manitoba), Costa Rica, Ecuador (Galápagos), El Salvador, Guatemala, Honduras, Mexico (central/east), Nicaragua, United States (Central Time)
-
-## **18,000 seconds (UTC-05)**
-Bahamas, Brazil (Acre), Canada (Ontario most, Quebec most), Colombia, Cuba, Ecuador (mainland), Haiti, Jamaica, Mexico (Quintana Roo), Panama, Peru, United States (Eastern Time)
-
-## **14,400 seconds (UTC-04)**
-Barbados, Bolivia, Brazil (Amazonas most, Mato Grosso, Rondônia), Canada (Nova Scotia, New Brunswick), Chile (mainland), Dominican Republic, Guyana, Netherlands (Aruba, Curaçao), Paraguay, Puerto Rico, Trinidad and Tobago, Venezuela, Caribbean island nations
-
-## **12,600 seconds (UTC-03:30)**
-Canada (Newfoundland)
-
-## **10,800 seconds (UTC-03)**
-Argentina, Brazil (Brasília, Rio, São Paulo), Chile (Magallanes), Denmark (Greenland most), France (French Guiana), Suriname, UK (Falklands), Uruguay
-
-## **7,200 seconds (UTC-02)**
-Brazil (Fernando de Noronha), Denmark (parts of Greenland), UK (South Georgia)
-
-## **3,600 seconds (UTC-01)**
-Cape Verde, Portugal (Azores), Denmark (east Greenland)
-
-## **0 seconds (UTC±00)**
-Burkina Faso, Côte d'Ivoire, Denmark (Faroe Islands), Gambia, Ghana, Guinea, Guinea-Bissau, Iceland, Ireland, Liberia, Mali, Mauritania, Portugal (mainland, Madeira), São Tomé and Príncipe, Senegal, Sierra Leone, Spain (Canary Islands), Togo, United Kingdom (mainland), Western Sahara
-
-## **3,600 seconds (UTC+01)**
-Albania, Algeria, Andorra, Angola, Austria, Belgium, Benin, Bosnia and Herzegovina, Cameroon, Central African Republic, Chad, Croatia, Czech Republic, Denmark (mainland), France (mainland), Germany, Hungary, Italy, Luxembourg, Malta, Monaco, Montenegro, Morocco, Namibia, Netherlands, Niger, Nigeria, North Macedonia, Norway, Poland, San Marino, Serbia, Slovakia, Slovenia, Spain (mainland), Sweden, Switzerland, Tunisia, Vatican City
-
-## **7,200 seconds (UTC+02)**
-Botswana, Bulgaria, Burundi, Cyprus, Egypt, Estonia, Eswatini, Finland, Greece, Israel, Jordan, Latvia, Lebanon, Lesotho, Libya, Lithuania, Malawi, Moldova, Mozambique, Palestine, Romania, Russia (Kaliningrad), Rwanda, South Africa, South Sudan, Sudan, Syria, Ukraine, Zambia, Zimbabwe
-
-## **10,800 seconds (UTC+03)**
-Bahrain, Belarus, Comoros, Djibouti, Eritrea, Ethiopia, Iraq, Kenya, Kuwait, Madagascar, Qatar, Russia (Moscow, western), Saudi Arabia, Somalia, Tanzania, Turkey, Uganda, Yemen
-
-## **12,600 seconds (UTC+03:30)**
-Iran
-
-## **14,400 seconds (UTC+04)**
-Armenia, Azerbaijan, Georgia, Mauritius, Oman, Russia (Samara), Seychelles, United Arab Emirates, France (Réunion)
-
-## **16,200 seconds (UTC+04:30)**
-Afghanistan
-
-## **18,000 seconds (UTC+05)**
-Kazakhstan (western), Maldives, Pakistan, Russia (Yekaterinburg), Tajikistan, Turkmenistan, Uzbekistan
-
-## **19,800 seconds (UTC+05:30)**
-India, Sri Lanka
-
-## **20,700 seconds (UTC+05:45)**
-Nepal
-
-## **21,600 seconds (UTC+06)**
-Bangladesh, Bhutan, Kazakhstan (central/east), Kyrgyzstan, Russia (Omsk)
-
-## **23,400 seconds (UTC+06:30)**
-Myanmar, Australia (Cocos Islands)
-
-## **25,200 seconds (UTC+07)**
-Cambodia, Indonesia (western: Java, Sumatra), Laos, Mongolia (west), Russia (Krasnoyarsk), Thailand, Vietnam
-
-## **28,800 seconds (UTC+08)**
-Australia (Western Australia), Brunei, China, Hong Kong, Indonesia (central: Sulawesi, Bali), Macau, Malaysia, Mongolia (most), Philippines, Russia (Irkutsk), Singapore, Taiwan
-
-## **31,500 seconds (UTC+08:45)**
-Australia (Eucla, WA)
-
-## **32,400 seconds (UTC+09)**
-East Timor, Indonesia (eastern), Japan, North Korea, Palau, Russia (Yakutia west), South Korea
-
-## **34,200 seconds (UTC+09:30)**
-Australia (Northern Territory, South Australia)
-
-## **36,000 seconds (UTC+10)**
-Australia (Queensland, NSW, Victoria, Tasmania), Papua New Guinea, Russia (Vladivostok), Micronesia (Chuuk, Yap)
-
-## **37,800 seconds (UTC+10:30)**
-Australia (Lord Howe Island)
-
-## **39,600 seconds (UTC+11)**
-Australia (Norfolk Island), France (New Caledonia), Russia (Magadan, Sakhalin), Solomon Islands, Vanuatu
-
-## **43,200 seconds (UTC+12)**
-Fiji, Kiribati (Gilbert Islands), Marshall Islands, Nauru, New Zealand (mainland), Russia (Kamchatka), Tuvalu
-
-## **45,900 seconds (UTC+12:45)**
-New Zealand (Chatham Islands)
-
-## **46,800 seconds (UTC+13)**
-Kiribati (Phoenix Islands), New Zealand (Tokelau), Samoa, Tonga
-
-## **50,400 seconds (UTC+14)**
-Kiribati (Line Island)
+| GMT Offset | Seconds | Countries / Territories |
+|------------|---------:|-------------------------|
+| GMT-12:00 | -43200 | Baker Island (US), Howland Island (US) |
+| GMT-11:00 | -39600 | American Samoa, Niue, Midway Atoll (US) |
+| GMT-10:00 | -36000 | Hawaii (USA), Cook Islands, French Polynesia (most) |
+| GMT-09:30 | -34200 | Marquesas Islands (French Polynesia) |
+| GMT-09:00 | -32400 | Alaska (USA, most), Gambier Islands (French Polynesia) |
+| GMT-08:00 | -28800 | United States (Pacific), Canada (British Columbia), Mexico (Baja California) |
+| GMT-07:00 | -25200 | United States (Mountain), Canada (Alberta), Mexico (Chihuahua, Sonora) |
+| GMT-06:00 | -21600 | Costa Rica, El Salvador, Guatemala, Honduras, Nicaragua, Belize, United States (Central), Canada (Saskatchewan, Manitoba), Mexico (Central) |
+| GMT-05:00 | -18000 | Colombia, Ecuador (mainland), Peru, Panama, Cuba, Jamaica, Haiti, United States (Eastern), Canada (Ontario, Quebec) |
+| GMT-04:30 | -16200 | Venezuela |
+| GMT-04:00 | -14400 | Bolivia, Dominican Republic, Puerto Rico, Barbados, Trinidad and Tobago, Guyana, Paraguay, Chile (part), Canada (Atlantic) |
+| GMT-03:30 | -12600 | Newfoundland (Canada) |
+| GMT-03:00 | -10800 | Argentina, Brazil (Brasília), Uruguay, Suriname, French Guiana |
+| GMT-02:00 | -7200 | South Georgia and the South Sandwich Islands |
+| GMT-01:00 | -3600 | Cape Verde, Azores (Portugal) |
+| GMT+00:00 | 0 | United Kingdom, Ireland, Portugal (mainland), Iceland, Ghana, Côte d'Ivoire, Burkina Faso, Mali, Mauritania, Senegal, The Gambia, Guinea, Guinea-Bissau, Sierra Leone, Liberia, Togo |
+| GMT+01:00 | 3600 | Algeria, Tunisia, Nigeria, Benin, Cameroon, Chad, Niger, Morocco (varies), Spain, France, Germany, Italy, Belgium, Netherlands, Luxembourg, Switzerland, Austria, Denmark, Norway, Sweden, Poland, Czech Republic, Slovakia, Hungary, Slovenia, Croatia, Serbia, Bosnia and Herzegovina, Montenegro, North Macedonia |
+| GMT+02:00 | 7200 | Egypt, Libya, South Africa, Botswana, Zimbabwe, Zambia, Malawi, Mozambique, Rwanda, Burundi, Lesotho, Eswatini, Finland, Estonia, Latvia, Lithuania, Greece, Romania, Bulgaria, Moldova, Ukraine, Cyprus, Israel, Lebanon |
+| GMT+03:00 | 10800 | Saudi Arabia, Iraq, Kuwait, Qatar, Bahrain, Yemen, Jordan, Syria, Turkey, Russia (Moscow), Belarus, Ethiopia, Eritrea, Kenya, Tanzania, Uganda, Somalia, Djibouti, South Sudan |
+| GMT+03:30 | 12600 | Iran |
+| GMT+04:00 | 14400 | United Arab Emirates, Oman, Armenia, Azerbaijan, Georgia, Mauritius, Seychelles |
+| GMT+04:30 | 16200 | Afghanistan |
+| GMT+05:00 | 18000 | Pakistan, Uzbekistan, Turkmenistan, Tajikistan, Maldives |
+| GMT+05:30 | 19800 | India, Sri Lanka |
+| GMT+05:45 | 20700 | Nepal |
+| GMT+06:00 | 21600 | Bangladesh, Bhutan, Kazakhstan (part), Kyrgyzstan |
+| GMT+06:30 | 23400 | Myanmar, Cocos (Keeling) Islands |
+| GMT+07:00 | 25200 | Thailand, Vietnam, Cambodia, Laos, Indonesia (Western), Christmas Island |
+| GMT+08:00 | 28800 | Philippines, China, Singapore, Malaysia, Brunei, Taiwan, Hong Kong, Macau, Australia (Western), Indonesia (Central), Mongolia (part) |
+| GMT+08:45 | 31500 | Australia (Eucla region) |
+| GMT+09:00 | 32400 | Japan, South Korea, North Korea, Timor-Leste, Indonesia (Eastern) |
+| GMT+09:30 | 34200 | Australia (Northern Territory, South Australia) |
+| GMT+10:00 | 36000 | Papua New Guinea, Australia (Queensland), Australia (Victoria), Australia (New South Wales), Guam, Northern Mariana Islands |
+| GMT+10:30 | 37800 | Lord Howe Island (Australia) |
+| GMT+11:00 | 39600 | Solomon Islands, New Caledonia, Vanuatu |
+| GMT+12:00 | 43200 | Fiji, Nauru, Tuvalu, Kiribati (Gilbert Islands), Marshall Islands, Wake Island (US) |
+| GMT+12:45 | 45900 | Chatham Islands (New Zealand) |
+| GMT+13:00 | 46800 | New Zealand, Samoa, Tokelau, Tonga, Kiribati (Phoenix Islands) |
+| GMT+14:00 | 50400 | Kiribati (Line Islands) |
