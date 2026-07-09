@@ -76,3 +76,10 @@ DS3231  |  ESP32-S3 N16R8
    VCC  → 3.3V
    GND  → GND
 ```
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/ESP32-S3/image/s3-1.jpg">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/ESP32-S3/image/s3-2.png">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/ESP32-S3/image/s3-3.png">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/ESP32-S3/image/s3-4.png">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/ESP32-S3/image/s3-5.png">
+
+
