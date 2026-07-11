@@ -13,7 +13,6 @@
 # Libraries
 - ArduinoJson
 - PubSubClient
-- NTPClient
 - RTCLib 1.14.1
 
 # Installation
