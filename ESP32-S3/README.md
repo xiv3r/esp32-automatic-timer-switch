@@ -62,8 +62,8 @@ IN11 _____ 3   Relay 11
 IN12 _____ 10  Relay 12
 IN13 _____ 11  Relay 13
 IN14 _____ 12  Relay 14
-IN15 _____ 19  Relay 15
-IN16 _____ 20  Relay 16
+IN15 _____ 20  Relay 15
+IN16 _____ 19  Relay 16
 GND  _____ GND
 ```
 
