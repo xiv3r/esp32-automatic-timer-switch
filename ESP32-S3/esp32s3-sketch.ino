@@ -180,17 +180,17 @@ const byte       DNS_PORT = 53;
 #define MAX_RELAYS 16
 const uint8_t DEFAULT_RELAY_PINS[] = {
 // change gpio pins
-  4,  // IN1  - Relay 1
-  5,  // IN2  - Relay 2
-  6,  // IN3  - Relay 3
-  7,  // IN4  - Relay 4
+   4, // IN1  - Relay 1
+   5, // IN2  - Relay 2
+   6, // IN3  - Relay 3
+   7, // IN4  - Relay 4
   15, // IN5  - Relay 5
   16, // IN6  - Relay 6
- 17,  // IN7  - Relay 7
- 18,  // IN8  - Relay 8
+  17, // IN7  - Relay 7
+  18, // IN8  - Relay 8
    1, // IN9  - Relay 9
-  2, // IN10 - Relay 10
-  3, // IN11 - Relay 11
+   2, // IN10 - Relay 10
+   3, // IN11 - Relay 11
   10, // IN12 - Relay 12
   11, // IN13 - Relay 13
   12, // IN14 - Relay 14
