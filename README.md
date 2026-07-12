@@ -13,7 +13,6 @@
 
 ## Arduino Libraries
 - ArduinoJson
-- PubSubClient 
 - RTClib v1.14.1
 
 ## Installation
