@@ -25,6 +25,8 @@
 ## Flasher
 ### Android (otg)
 - https://play.google.com/store/apps/details?id=io.serialflow.espflash
+### Android Termux
+- https://github.com/7wp81x/Termux-ESP-Flasher
 ### Windows
 - https://dl.espressif.com/public/flash_download_tool.zip
 ### Linux
