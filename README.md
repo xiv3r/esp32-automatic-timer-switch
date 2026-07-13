@@ -139,7 +139,7 @@ GND → GND
 <img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/sc3.png">
 <img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/sc4.png">
 <img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/shot2.jpg">
-<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/shot3.jpg">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/esp32-0.jpg">
 
 <details><summary>
   
