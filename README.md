@@ -134,12 +134,12 @@ SCL → 22
 GND → GND
 ```
 
-<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/img1.png">
-<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/sc2.png">
-<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/sc3.png">
-<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/sc4.png">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/src1.png">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/src2.png">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/src3.png">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/src4.png">
 <img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/shot2.jpg">
-<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/esp32-0.jpg">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/src5.jpg">
 
 <details><summary>
   
