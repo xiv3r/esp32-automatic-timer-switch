@@ -1,14 +1,15 @@
 # Requirements
 - 5V 1-16 Channel Relay
 - ESP32-S3 N16R8 (16mb flash 8mb ram)
+- ESP32-S3 Expansion board
 - DS3231 RTC Module (offline recommended)
-- Female to Female Dupont Wires
-- Stabe Wifi Connection (opt. if no ds3231)
+- Female to Male Dupont Wires
+- Stabe Wifi Connection (optional if no ds3231)
 - 5V 2-5A Power Supply
 
 `Optional`
 - 5v UPS (Maintain Internal RTC time without DS3231 or NTP)
-- ESP32-S3 Expansion board
+- SRR for high loads setup
 
 # Libraries
 - ArduinoJson
@@ -17,20 +18,19 @@
 
 # Installation
 - Download the Firmware and Flash
-
-https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/esp32s3
+- https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/esp32s3
 - Flash Offset
 ```
 esp32s3-dump-0x0.bin: 0x0
 ```
+
 # Wifi Key
-- Wifi Name:`ESP32_S3_16CH_Timer_Switch`
+- Wifi Name:`ESP32S3_16CH_Timer_Switch`
 - Password:`ESP32-admin`
 
 # Setup
 > online
 - Go to `192.168.4.1 –> wifi` then connect to your Home Wifi to set rtc time automatically 
-
 > offline
 - Go to `192.168.4.1 -> Time` then tap sync browser to set the rtc time 
 
