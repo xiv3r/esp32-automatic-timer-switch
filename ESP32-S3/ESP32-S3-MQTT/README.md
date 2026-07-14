@@ -1,5 +1,5 @@
 ### Download the Firmware and Flash
-- https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/esp32s3-mqtt
+https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/esp32s3-mqtt
 
 # 16 Channel GPIO Connection
 ```
