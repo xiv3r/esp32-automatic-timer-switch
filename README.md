@@ -1,3 +1,8 @@
+## Contributors 
+
+<a href="https://github.com/xiv3r/esp32-automatic-timer-switch/graphs/contributors">
+<img src="https://contrib.rocks/image?&columns=25&max=10000&&repo=xiv3r/esp32-automatic-timer-switch" alt="contributors"/></a>
+
 ## Requirements
 - ESP32 30/38P Pins
 - DS3231 RTC Module (offline recommend)
