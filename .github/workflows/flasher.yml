@@ -25,8 +25,8 @@ jobs:
         # wget https://github.com/arduino/arduino-ide/releases/download/2.3.10/arduino-ide_2.3.10_Linux_64bit.AppImage
         # wget https://github.com/arduino/arduino-ide/releases/download/2.3.10/arduino-ide_2.3.10_Windows_64bit.exe
         # wget https://github.com/arduino/arduino-cli/releases/download/v1.5.1/arduino-cli_1.5.1-1_amd64.deb
-        wget https://data.winudf.com/XAPK/aW8uc2VyaWFsZmxvdy5lc3BmbGFzaF80NV9iYjBiYzRjNg?_p=aW8uc2VyaWFsZmxvdy5lc3BmbGFzaA%3D%3D&download_id=no_1478200724026763&filename=ESPFlash-ESP32%2FESP8266Flasher_1.3.3_APKPure.xapk&full_size=11378437&is_hot=false&k=4c62ca314d2ffbfc820cf8d28b2b0edc6a782afb&package_name=io.serialflow.espflash&source=web&token=1786087419-65af9f1652-0-92e2d9c03fb5a331c83b32baa132e21f
-        wget https://data.winudf.com/XAPK/aW8uc2VyaWFsZmxvdy5lc3BmbGFzaF80NV9iYjBiYzRjNg?_p=aW8uc2VyaWFsZmxvdy5lc3BmbGFzaA%3D%3D&download_id=1753807636379542&filename=ESPFlash-ESP32%2FESP8266Flasher_1.3.3_APKPure.xapk&full_size=11378437&is_hot=false&k=204d73c413a1780641e30ba125ed40dd6a782b7a&package_name=io.serialflow.espflash&source=web&token=1786087546-8cc755c824-0-2b96b0d92bcd2f98612036c4714c29f7
+        wget --no-check-certificate https://data.winudf.com/XAPK/aW8uc2VyaWFsZmxvdy5lc3BmbGFzaF80NV9iYjBiYzRjNg?_p=aW8uc2VyaWFsZmxvdy5lc3BmbGFzaA%3D%3D&download_id=no_1478200724026763&filename=ESPFlash-ESP32%2FESP8266Flasher_1.3.3_APKPure.xapk&full_size=11378437&is_hot=false&k=4c62ca314d2ffbfc820cf8d28b2b0edc6a782afb&package_name=io.serialflow.espflash&source=web&token=1786087419-65af9f1652-0-92e2d9c03fb5a331c83b32baa132e21f
+        wget --no-check-certificate https://data.winudf.com/XAPK/aW8uc2VyaWFsZmxvdy5lc3BmbGFzaF80NV9iYjBiYzRjNg?_p=aW8uc2VyaWFsZmxvdy5lc3BmbGFzaA%3D%3D&download_id=1753807636379542&filename=ESPFlash-ESP32%2FESP8266Flasher_1.3.3_APKPure.xapk&full_size=11378437&is_hot=false&k=204d73c413a1780641e30ba125ed40dd6a782b7a&package_name=io.serialflow.espflash&source=web&token=1786087546-8cc755c824-0-2b96b0d92bcd2f98612036c4714c29f7
         
     - name: Determine release tag
       id: get_tag
