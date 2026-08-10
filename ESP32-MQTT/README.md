@@ -5,23 +5,23 @@ https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/esp32-mqtt
 ## 16 CHANNEL RELAY GPIO Connection 
 ```
 RELAY  |  ESP32 30/38P
-VCC  _____ 5VIN 
-IN1  _____ 15  Relay 1
-IN2  _____ 2   Relay 2
-IN3  _____ 4   Relay 3
-IN4  _____ 5   Relay 4
-IN5  _____ 18  Relay 5
-IN6  _____ 19  Relay 6
-IN7  _____ 3   Relay 7
-IN8  _____ 1   Relay 8
-IN9  _____ 23  Relay 9
-IN10 _____ 13  Relay 10
-IN11 _____ 14  Relay 11
-IN12 _____ 27  Relay 12
-IN13 _____ 26  Relay 13
-IN14 _____ 25  Relay 14
-IN15 _____ 33  Relay 15
-IN16 _____ 32  Relay 16
+VCC  _____ 5VIN
+IN1  _____ GPIO32  Relay 1
+IN2  _____ GPIO33  Relay 2
+IN3  _____ GPIO25  Relay 3
+IN4  _____ GPIO26  Relay 4
+IN5  _____ GPIO27  Relay 5
+IN6  _____ GPIO14  Relay 6
+IN7  _____ GPIO13  Relay 7
+IN8  _____ GPIO23  Relay 8
+IN9  _____ GPIO1   Relay 9  (TX)
+IN10 _____ GPIO3   Relay 10 (RX)
+IN11 _____ GPIO19  Relay 11
+IN12 _____ GPIO18  Relay 12
+IN13 _____ GPIO5   Relay 13
+IN14 _____ GPIO4   Relay 14
+IN15 _____ GPIO2   Relay 15
+IN16 _____ GPIO15  Relay 16
 GND  _____ GND
 ```
 
