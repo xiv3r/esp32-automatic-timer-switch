@@ -49,7 +49,7 @@ esp32-dump-0x0.bin: 0x0
 
 ## WiFi Key
 - WiFi SSID: `ESP32_16CH_Timer_Switch`
-- Password: `ESP32-admin`
+- Password: `12345678`
   
 ## Activation
 > - Without ds3231 or wifi the time runs from internal rtc
