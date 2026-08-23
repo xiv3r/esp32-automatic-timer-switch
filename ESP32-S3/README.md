@@ -26,7 +26,7 @@ esp32s3-dump-0x0.bin: 0x0
 
 # Wifi Key
 - Wifi Name:`ESP32S3_16CH_Timer_Switch`
-- Password:`ESP32-admin`
+- Password:`12345678`
 
 # Setup
 > online
