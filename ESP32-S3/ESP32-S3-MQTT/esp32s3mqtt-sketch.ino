@@ -3325,7 +3325,7 @@ void loop() {
         processRelaySchedules();
     }    
     static unsigned long lastCriticalSave = 0;
-    if (criticalStateDirty && timeHasElapsed(now, lastCriticalSave, 300000)) {
+    if (criticalStateDirty && timeHasElapsed(now, lastCriticalSave, 7200000)) {
         lastCriticalSave = now;
         healer.saveCriticalState();
         criticalStateDirty = false;
