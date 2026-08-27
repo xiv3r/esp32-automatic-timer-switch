@@ -20,7 +20,7 @@ jobs:
         mkdir -p downloads
         cd downloads
         # wget -O ESPFlash.xapk "https://d-13.winudf.com/b/XAPK/aW8uc2VyaWFsZmxvdy5lc3BmbGFzaF80MV8zZTQ3YTBmZA?_fn=RVNQRmxhc2gtRVNQMzIvRVNQODI2NkZsYXNoZXJfMS4yLjlfQVBLUHVyZS54YXBr&_p=aW8uc2VyaWFsZmxvdy5lc3BmbGFzaA%3D%3D&download_id=no_1594906870222671&is_hot=false&k=e6d7cefaa935e3df40d8bb7ea5830c2069deee65"
-         wget -O ArduinoDroid_Premium_v7.4.1.apk --no-check-certificate "https://404notfound.financemonk.net/dlfile.php?k=eyJmaWxlIjoiQXJkdWlub0Ryb2lkLUFyZHVpbm8tRVNQSURFdjcuNC4xYjg3MmFybTY0OC4wX2VkYnl5b3VhcmVmaW5pc2hlZC5hcGsiLCJleHAiOjE3ODc4MTE0NTF9"
+        # wget -O ArduinoDroid_Premium_v7.4.1.apk --no-check-certificate "https://404notfound.financemonk.net/dlfile.php?k=eyJmaWxlIjoiQXJkdWlub0Ryb2lkLUFyZHVpbm8tRVNQSURFdjcuNC4xYjg3MmFybTY0OC4wX2VkYnl5b3VhcmVmaW5pc2hlZC5hcGsiLCJleHAiOjE3ODc4MTE0NTF9"
          wget -O Arduino_2.3.8_winx64.exe "https://github.com/arduino/arduino-ide/releases/download/2.3.8/arduino-ide_2.3.8_Windows_64bit.exe"
          wget https://github.com/arduino/arduino-ide/releases/download/2.3.10/arduino-ide_2.3.10_Linux_64bit.AppImage
          wget https://github.com/arduino/arduino-ide/releases/download/2.3.10/arduino-ide_2.3.10_Windows_64bit.exe
