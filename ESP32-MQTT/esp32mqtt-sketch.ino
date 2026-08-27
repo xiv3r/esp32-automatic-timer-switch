@@ -165,7 +165,7 @@ inline bool timeHasElapsed(unsigned long current, unsigned long previous, unsign
 //  Millis-Safe Future Time Check
 // =============================================================================
 inline bool isTimeReached(unsigned long current, unsigned long target) {
-    return (long)(current - target) >= 0;
+    return (current >= target) || ((target - current) > 0x80000000UL);
 }
 
 // =============================================================================
