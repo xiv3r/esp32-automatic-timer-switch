@@ -3201,6 +3201,7 @@ void setup() {
         timeSource = TIME_SOURCE_NONE;
     }    
     WiFi.mode(WIFI_AP_STA);    
+    WiFi.setTxPower(WIFI_POWER_17dBm);
     if (extConfig.sta_enabled && strlen(sysConfig.sta_ssid) > 0) {
         WiFi.disconnect(true);
         delay(100);
