@@ -67,6 +67,8 @@ esp32-dump-0x0.bin: 0x0
 ## Set the Time (country)
 > Set to your country time e.g for PH (UTC+8.0) 28800 seconds
 - Search your country `gmt offsets in seconds` and paste to the Time -> GMT Offset
+- e.g for negative gmt: -28800
+- e.g fot positive gmt:  28800
 - https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/gmt-offsets-seconds.md
   
 ## Access
