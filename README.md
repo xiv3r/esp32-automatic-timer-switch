@@ -80,7 +80,6 @@ esp32-dump-0x0.bin: 0x0
 
 ## Note
 - Disable Wifi Station Mode if you have a DS3231
-- Avoid connecting to a non-existed open wifi network SSID to prevent hang issue. Solution turn off wifi station mode.
 
 <details><summary>
 
