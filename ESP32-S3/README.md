@@ -28,22 +28,62 @@ esp32s3-dump-0x0.bin: 0x0
 - Wifi Name:`ESP32S3_16CH_Timer_Switch`
 - Password:`12345678`
 
-# Setup
-> online
-- Go to `192.168.4.1 –> wifi` then connect to your Home Wifi to set rtc time automatically 
-> offline
-- Go to `192.168.4.1 -> Time` then tap sync browser to set the rtc time 
+## Activation
+> - Without ds3231 or wifi the time runs from internal rtc
 
-# Access
-- mDNS:`esp32-s3-16ch-timer-switch.local`
-- Captive Portal:`Auto redirect`
+° Online
+- Go to `Wifi settings` and connect to your home wifi to set the rtc time automatically
+
+° Offline
+- Go to `Time settings` and tap `Sync Browser ` to set the rtc time
+
+## Relay Naming 
+> mobile mode
+- Double click relay name to edit
+
+## Set the Time (country)
+> Set to your country time e.g for PH (UTC+8.0) 28800 seconds
+- Search your country `gmt offsets in seconds` and paste to the Time -> GMT Offset
+- e.g for negative gmt: -28800
+- e.g for positive gmt:  28800
+- https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/gmt-offsets-seconds.md
+  
+## Access
+- mDNS:`esp32s3-16ch-timer-switch.local`
+- Captive Portal: `Auto redirect`
 - Gateway:`192.168.4.1`
 - WAN:`192.168.1.123`
-- Global:`Enable esp32 s3 Port Forwarding on your router to access anywhere`
+- Global:`Enable Port Forwarding on your router to access anywhere`
 
-# Reset
-- Hold BOOT button for 5 seconds
+## Note
+- Disable Wifi Station Mode if you have a DS3231
 
+<details><summary>
+
+## Isolate Relay Power
+</summary>
+
+> ⚠️ Use the Main relay power input and Avoid using VCC and GND from the relay IN GPIO Pin row
+
+### 5V Relay
+- Remove the Yellow VCC-JDVCC jumper.
+- Relay JD-VCC pin: Connect to external 5V Positive wire.
+- Relay GND pin: Connect to external 5V Negative wire.
+- Relay VCC pin: Connect to ESP32 5V (powers the LED).
+
+### 12V Relay
+- Remove the Yellow VCC-JDVCC jumper.
+- Relay JD-VCC pin: Connect to external 12V Positive wire.
+- Relay GND pin: Connect to external 12V Negative wire.
+- Relay VCC pin: Connect to ESP32 5V (powers the LED).
+
+</details>
+
+## Reset
+- Hold BOOT button for 5 seconds to factory reset 
+
+## Restart
+- Press EN button to restart
 
 # 16 Channel GPIO Connection
 ```
