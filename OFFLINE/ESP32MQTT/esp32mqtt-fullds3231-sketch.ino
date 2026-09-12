@@ -1,6 +1,6 @@
 /*
 ===============================================================================
- *  ESP32 16-Channel Automatic Relay Smart Switch with Full MQTT Support
+ *  ESP32 16-Channel Automatic Relay Smart Switch with Full MQTT Support no NTP
  *  Author: Raff Alds
  *  Github: https://www.github.com/xiv3r
  *  License: GPLv3
@@ -137,7 +137,7 @@ inline bool timeHasElapsed(unsigned long current, unsigned long previous, unsign
 //  Millis-Safe Future Time Check
 // =============================================================================
 inline bool isTimeReached(unsigned long current, unsigned long target) {
-    return (current >= target) || ((target - current) > 0x80000000UL);
+    return (int32_t)(current - target) >= 0;
 }
 
 // =============================================================================
