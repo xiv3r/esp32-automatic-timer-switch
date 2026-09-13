@@ -79,7 +79,7 @@ esp32-dump-0x0.bin: 0x0
 - Global:`Enable Port Forwarding on your router to access anywhere`
 
 ## Note
-- Disable Wifi Station Mode if you have a DS3231
+- Disable Wifi Station Mode if you have a DS3231 RTC Module. To set the DS3231 RTC time go to Time page and tap Sync Browser.
 
 <details><summary>
 
