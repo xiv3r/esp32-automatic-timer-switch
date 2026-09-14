@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'ESP32S3/*.ino'
+      - 'ESP32-S3/*.ino'
     
 jobs:
   build-and-release:
