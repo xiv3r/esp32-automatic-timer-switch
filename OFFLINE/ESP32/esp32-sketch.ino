@@ -2,7 +2,7 @@
 ===============================================================================
  *  ESP32 16-Channel Automatic Relay Timer Switch no NTP
  *  Author: Raff Alds
- *  Github: https://www.github.com/xiv3r
+ *  Github: github.com/xiv3r
  *  License: GPLv3
 ===============================================================================
 */
