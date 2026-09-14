@@ -1,9 +1,11 @@
 name: Build ESP32-S3 Firmware
 
 on:
-  workflow_dispatch:
-  release:
-    types: [published]
+  push:
+    branches:
+      - main
+    paths:
+      - 'ESP32S3/*.ino'
     
 jobs:
   build-and-release:
