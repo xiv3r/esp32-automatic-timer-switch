@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'ESP32MQTT/*.ino'
+      - 'ESP32-MQTT/*.ino'
     
 jobs:
   build-and-release:
