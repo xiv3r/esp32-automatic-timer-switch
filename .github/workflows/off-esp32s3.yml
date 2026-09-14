@@ -1,9 +1,11 @@
 name: Build ESP32S3 Offline Firmware
 
 on:
-  workflow_dispatch:
-  release:
-    types: [published]
+  push:
+    branches:
+      - main
+    paths:
+      - 'OFFLINE/ESP32S3/*.ino'
     
 jobs:
   build-and-release:
