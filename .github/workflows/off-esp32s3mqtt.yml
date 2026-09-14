@@ -1,9 +1,11 @@
 name: Build ESP32S3 Offline MQTT Firmware
 
 on:
-  workflow_dispatch:
-  release:
-    types: [published]
+  push:
+    branches:
+      - main
+    paths:
+      - 'OFFLINE/ESP32S3MQTT/*.ino'
     
 jobs:
   build-and-release:
