@@ -167,6 +167,9 @@ inline bool timeHasElapsed(unsigned long current, unsigned long previous, unsign
     return (current - previous) >= interval;
 }
 
+// =============================================================================
+//  Millis-Safe Future Time Check
+// =============================================================================
 inline bool isTimeReached(unsigned long current, unsigned long target) {
     return (int32_t)(current - target) >= 0;
 }
