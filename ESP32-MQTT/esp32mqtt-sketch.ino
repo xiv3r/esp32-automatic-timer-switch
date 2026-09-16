@@ -166,6 +166,10 @@ static unsigned long lastScanAttempt = 0;
 inline bool timeHasElapsed(unsigned long current, unsigned long previous, unsigned long interval) {
     return (current - previous) >= interval;
 }
+
+// =============================================================================
+//  Millis-Safe Future Time Check
+// =============================================================================
 inline bool isTimeReached(unsigned long current, unsigned long target) {
     return (int32_t)(current - target) >= 0;
 }
