@@ -146,6 +146,7 @@ GND → GND
 <img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/src4.png">
 <img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/shot2.jpg">
 <img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/src5.jpg">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/esp32-diagram.png">
 
 # Build Firmware
 >  Auto Build firmware binaries using github action
