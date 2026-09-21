@@ -30,9 +30,9 @@ Preferences preferences;
 // =============================================================================
 //  Year 2106+ Support
 // =============================================================================
-#define MAX_UNIX_TIME_64 18446744073709551615ULL
-#define MIN_UNIX_TIME_64 1000000000ULL
-#define VALID_UNIX_TIME_64(epoch) ((epoch) > MIN_UNIX_TIME_64 && (epoch) < MAX_UNIX_TIME_64)
+#define MIN_UNIX_TIME_64 1577836800ULL
+#define MAX_UNIX_TIME_64 4102444800ULL
+#define VALID_UNIX_TIME_64(epoch) ((epoch) >= MIN_UNIX_TIME_64 && (epoch) <= MAX_UNIX_TIME_64)
 
 // =============================================================================
 //  Day-of-Week / Month-of-Year Masks
@@ -281,7 +281,6 @@ static unsigned long lastScheduleCacheUpdate = 0;
 static const unsigned long SCHEDULE_CACHE_INTERVAL = 1000UL;
 static unsigned long lastScheduleProcess = 0;
 static bool lastRelayOutputs[MAX_RELAYS] = {false};
-static bool relayOutputsInitialized = false;
 
 // =============================================================================
 //  Memory Management
@@ -374,6 +373,7 @@ inline DateTime uint64ToRtcDateTime(uint64_t t64) {
 
 // =============================================================================
 //  64-bit GMT Time Implementation
+//
 // =============================================================================
 struct tm* gmtime64(uint64_t* timep) {
     static struct tm tm;
@@ -523,9 +523,6 @@ void initRTC() {
     }
     rtcPresent = true;
     rtcTimeValid = false;
-    if (rtc.lostPower()) {
-        return;
-    }
     DateTime now = rtc.now();
     if (now.year() >= 2020 && now.year() <= 2100) {
         uint64_t rtcEpoch = rtcDateTimeToUint64(now);
@@ -537,6 +534,9 @@ void initRTC() {
             lastRTCRebase = millis();
             rtcInitialized = true;
             timeSource = TIME_SOURCE_RTC;
+            if (rtc.lostPower()) {
+                rtc.adjust(now);
+            }
         }
     }
 }
@@ -795,20 +795,31 @@ bool SelfHealingSystem::recoverRTC() {
     if (!rtcPresent) return false;
     Wire.begin(8, 9);
     Wire.setTimeOut(50);
-    if (rtc.begin()) {
-        if (internalEpoch > 0) {
-            DateTime dt = uint64ToRtcDateTime(internalEpoch);
-            rtc.adjust(dt);
-            rtcTimeValid = true;
-            return true;
-        } else if (rtcTimeValid) {
-            DateTime now = rtc.now();
-            if (now.year() >= 2020 && now.year() <= 2100) {
-                internalEpoch = rtcDateTimeToUint64(now);
-                rtcInitialized = true;
-                return true;
-            }
-        }
+    if (!rtc.begin()) return false;
+    DateTime now = rtc.now();
+    bool dsValid = (now.year() >= 2020 && now.year() <= 2100);
+    uint64_t rtcEpoch = 0;
+    if (dsValid) {
+        rtcEpoch = rtcDateTimeToUint64(now);
+        dsValid = VALID_UNIX_TIME_64(rtcEpoch);
+    }
+    if (rtcInitialized && internalEpoch > 0) {
+        DateTime dt = uint64ToRtcDateTime(internalEpoch);
+        rtc.adjust(dt);
+        rtcTimeValid = true;
+        lastRTCDSync = millis();
+        return true;
+    }
+    if (dsValid) {
+        rtcTimeValid = true;
+        internalEpoch = rtcEpoch;
+        driftCompensation = 1.0f;
+        rtcMicrosAtLastSync = micros();
+        lastRTCRebase = millis();
+        rtcInitialized = true;
+        timeSource = TIME_SOURCE_RTC;
+        if (rtc.lostPower()) rtc.adjust(now);
+        return true;
     }
     return false;
 }
@@ -2190,7 +2201,7 @@ void processNTPResponse() {
                 ntpSecs64 += 0x100000000ULL;
             }
             uint64_t unixEpoch = ntpSecs64 - NTP_EPOCH_OFFSET;
-            if (unixEpoch > 1577836800ULL && unixEpoch < MAX_UNIX_TIME_64) {
+            if (VALID_UNIX_TIME_64(unixEpoch)) {
                 ntpResult = unixEpoch;
                 ntpReceived = true;
                 ntpAsyncStage = 2;
@@ -2276,10 +2287,10 @@ void handleBrowserTimeSync() {
             "{\"success\":false,\"error\":\"Bad JSON\"}");
         return;
     }
-    uint64_t browserUtcEpoch = doc["utc_epoch"];
-    if (browserUtcEpoch < 1577836800ULL || browserUtcEpoch > MAX_UNIX_TIME_64) {
+    uint64_t browserUtcEpoch = doc["utc_epoch"].as<uint64_t>();
+    if (!VALID_UNIX_TIME_64(browserUtcEpoch)) {
         server.send(400, "application/json",
-            "{\"success\":false,\"error\":\"Invalid epoch time. Expected between 2020-2106+.\"}");
+            "{\"success\":false,\"error\":\"Invalid epoch time. Expected between 2020-01-01 and 2100-01-01.\"}");
         return;
     }
     syncInternalRTC(browserUtcEpoch, TIME_SOURCE_BROWSER);
@@ -2430,7 +2441,7 @@ void processRelaySchedules() {
     int currentMonth = ti->tm_mon;
     int currentSeconds = ti->tm_hour * 3600 + ti->tm_min * 60 + ti->tm_sec;
     int cur = currentSeconds;
-    uint8_t todayBit = cachedTodayBit;
+    uint8_t todayBit = (uint8_t)(1 << currentWeekday);
     int monthDay = currentMonthDay;
     int currentMonthVal = currentMonth;
     static unsigned long lastStateChange[MAX_RELAYS] = {0};
@@ -2503,7 +2514,6 @@ void processRelaySchedules() {
             }
         }
     }
-    relayOutputsInitialized = true;
 }
 
 // =============================================================================
@@ -2586,7 +2596,6 @@ void setup() {
         setRelayOutput(i, false);
         lastRelayOutputs[i] = false;
     }
-    relayOutputsInitialized = true;
     for (int i = 0; i < MAX_RELAYS; i++) {
         initScheduleDefaults(i);
     }
@@ -2606,6 +2615,10 @@ void setup() {
         driftCompensation = 1.0f;
         rtcInitialized = false;
         timeSource = TIME_SOURCE_NONE;
+    } else {
+        if (rtcPresent && !rtcTimeValid && internalEpoch > 0) {
+            healer.recoverRTC();
+        }
     }
     WiFi.mode(WIFI_AP_STA);
     if (extConfig.sta_enabled && strlen(sysConfig.sta_ssid) > 0) {
@@ -2663,15 +2676,6 @@ void loop() {
     }
     if (timeHasElapsed(now, lastConnectionCleanup, 60000)) {
         lastConnectionCleanup = now;
-        WiFiClient client = server.client();
-        int closedCount = 0;
-        while (client && closedCount < 5) {
-            if (client.connected()) {
-                client.stop();
-                closedCount++;
-            }
-            client = server.client();
-        }
         if (!scanInProgress) {
             WiFi.scanDelete();
         }
@@ -3103,15 +3107,23 @@ void handleSaveRelay() {
     int s = 0;
     for (JsonObject sch : schedules) {
         if (s >= 8) break;
-        relayConfigs[relay].schedule.startHour[s]   = sch["startHour"];
-        relayConfigs[relay].schedule.startMinute[s] = sch["startMinute"];
-        relayConfigs[relay].schedule.startSecond[s] = sch["startSecond"];
-        relayConfigs[relay].schedule.stopHour[s]    = sch["stopHour"];
-        relayConfigs[relay].schedule.stopMinute[s]  = sch["stopMinute"];
-        relayConfigs[relay].schedule.stopSecond[s]  = sch["stopSecond"];
+        uint8_t sh = sch["startHour"]   | 0; if (sh > 23) sh = 0;
+        uint8_t sm = sch["startMinute"] | 0; if (sm > 59) sm = 0;
+        uint8_t ss = sch["startSecond"] | 0; if (ss > 59) ss = 0;
+        uint8_t eh = sch["stopHour"]    | 0; if (eh > 23) eh = 0;
+        uint8_t em = sch["stopMinute"]  | 0; if (em > 59) em = 0;
+        uint8_t es = sch["stopSecond"]  | 0; if (es > 59) es = 0;
+        relayConfigs[relay].schedule.startHour[s]   = sh;
+        relayConfigs[relay].schedule.startMinute[s] = sm;
+        relayConfigs[relay].schedule.startSecond[s] = ss;
+        relayConfigs[relay].schedule.stopHour[s]    = eh;
+        relayConfigs[relay].schedule.stopMinute[s]  = em;
+        relayConfigs[relay].schedule.stopSecond[s]  = es;
         relayConfigs[relay].schedule.enabled[s]     = sch["enabled"];
         relayConfigs[relay].schedule.days[s]        = sch["days"] | 0;
-        relayConfigs[relay].schedule.monthDays[s]   = sch["monthDays"] | 0;
+        uint32_t rawMonthDays = sch["monthDays"] | 0;
+        if (rawMonthDays == 0) rawMonthDays = 0x7FFFFFFFUL;
+        relayConfigs[relay].schedule.monthDays[s] = rawMonthDays;
         uint16_t rawMonthMask = sch["monthMask"] | 0;
         relayConfigs[relay].schedule.monthMask[s] = (rawMonthMask == 0) ? MONTH_ALL : rawMonthMask;
         s++;
@@ -3580,7 +3592,6 @@ void handleSaveGPIOConfig() {
         setRelayOutput(i, state);
         lastRelayOutputs[i] = state;
     }
-    relayOutputsInitialized = true;
     saveGPIOConfig();
     saveConfiguration();
     updateScheduleCache();
@@ -3646,9 +3657,12 @@ void handleDeleteGPIO() {
         gpioConfig.activeLow[i] = gpioConfig.activeLow[i + 1];
         relayConfigs[i] = relayConfigs[i + 1];
         lastRelayOutputs[i] = lastRelayOutputs[i + 1];
+        scheduleActiveCache[i] = scheduleActiveCache[i + 1];
     }
     initScheduleDefaults(gpioConfig.count - 1);
     gpioConfig.activeLow[gpioConfig.count - 1] = true;
+    lastRelayOutputs[gpioConfig.count - 1] = false;
+    scheduleActiveCache[gpioConfig.count - 1] = false;
     gpioConfig.count--;
     saveGPIOConfig();
     saveConfiguration();
@@ -3679,7 +3693,6 @@ void handleToggleActiveLow() {
     pinMode(gpioConfig.pins[index], OUTPUT);
     setRelayOutput(index, logicalState);
     lastRelayOutputs[index] = logicalState;
-    relayOutputsInitialized = true;
     server.send(200, "application/json",
         "{\"success\":true,\"activeLow\":" + String(gpioConfig.activeLow[index] ? "true" : "false") + "}");
 }
