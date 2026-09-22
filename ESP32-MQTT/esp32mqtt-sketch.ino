@@ -3383,7 +3383,11 @@ void handleSaveRelay() {
         relayConfigs[relay].schedule.stopHour[s]    = eh;
         relayConfigs[relay].schedule.stopMinute[s]  = em;
         relayConfigs[relay].schedule.stopSecond[s]  = es;
-        relayConfigs[relay].schedule.enabled[s]     = sch["enabled"];
+        if (sch.containsKey("enabled")) {
+            relayConfigs[relay].schedule.enabled[s] = sch["enabled"].as<bool>();
+        } else {
+            relayConfigs[relay].schedule.enabled[s] = false;
+        }
         if (sch.containsKey("days")) {
             relayConfigs[relay].schedule.days[s] = sch["days"].as<uint8_t>();
         } else {
