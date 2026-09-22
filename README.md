@@ -112,14 +112,14 @@ esp32-dump-0x0.bin: 0x0
 ```
 RELAY  |  ESP32 30/38P
 VCC  _____ 5VIN
-IN1  _____ GPIO32  Relay 1
-IN2  _____ GPIO33  Relay 2
-IN3  _____ GPIO25  Relay 3
-IN4  _____ GPIO26  Relay 4
-IN5  _____ GPIO27  Relay 5
-IN6  _____ GPIO14  Relay 6
-IN7  _____ GPIO13  Relay 7
-IN8  _____ GPIO23  Relay 8
+IN1  _____ GPIO23  Relay 1
+IN2  _____ GPIO32  Relay 2
+IN3  _____ GPIO33  Relay 3
+IN4  _____ GPIO25  Relay 4
+IN5  _____ GPIO26  Relay 5
+IN6  _____ GPIO27  Relay 6
+IN7  _____ GPIO14  Relay 7
+IN8  _____ GPIO13  Relay 8
 IN9  _____ GPIO1   Relay 9  (TX)
 IN10 _____ GPIO3   Relay 10 (RX)
 IN11 _____ GPIO19  Relay 11
