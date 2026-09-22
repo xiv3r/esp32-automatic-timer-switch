@@ -523,6 +523,9 @@ void initRTC() {
     }
     rtcPresent = true;
     rtcTimeValid = false;
+    if (rtc.lostPower()) {
+        return;
+    }
     DateTime now = rtc.now();
     if (now.year() >= 2020 && now.year() <= 2100) {
         uint64_t rtcEpoch = rtcDateTimeToUint64(now);
@@ -534,9 +537,6 @@ void initRTC() {
             lastRTCRebase = millis();
             rtcInitialized = true;
             timeSource = TIME_SOURCE_RTC;
-            if (rtc.lostPower()) {
-                rtc.adjust(now);
-            }
         }
     }
 }
@@ -659,6 +659,7 @@ void loadRTCState() {
 void autoSaveInternalRTC() {
     unsigned long now = millis();
     if (!rtcInitialized || internalEpoch == 0) return;
+    if (rtcPresent && rtcTimeValid) return;
     if (timeHasElapsed(now, lastInternalRTCSave, INTERNAL_RTC_SAVE_INTERVAL)) {
         lastInternalRTCSave = now;
         performRTCReabase();
@@ -796,13 +797,6 @@ bool SelfHealingSystem::recoverRTC() {
     Wire.begin(21, 22);
     Wire.setTimeOut(50);
     if (!rtc.begin()) return false;
-    DateTime now = rtc.now();
-    bool dsValid = (now.year() >= 2020 && now.year() <= 2100);
-    uint64_t rtcEpoch = 0;
-    if (dsValid) {
-        rtcEpoch = rtcDateTimeToUint64(now);
-        dsValid = VALID_UNIX_TIME_64(rtcEpoch);
-    }
     if (rtcInitialized && internalEpoch > 0) {
         DateTime dt = uint64ToRtcDateTime(internalEpoch);
         rtc.adjust(dt);
@@ -810,16 +804,22 @@ bool SelfHealingSystem::recoverRTC() {
         lastRTCDSync = millis();
         return true;
     }
-    if (dsValid) {
-        rtcTimeValid = true;
-        internalEpoch = rtcEpoch;
-        driftCompensation = 1.0f;
-        rtcMicrosAtLastSync = micros();
-        lastRTCRebase = millis();
-        rtcInitialized = true;
-        timeSource = TIME_SOURCE_RTC;
-        if (rtc.lostPower()) rtc.adjust(now);
-        return true;
+    if (rtc.lostPower()) {
+        return false;
+    }
+    DateTime now = rtc.now();
+    if (now.year() >= 2020 && now.year() <= 2100) {
+        uint64_t rtcEpoch = rtcDateTimeToUint64(now);
+        if (VALID_UNIX_TIME_64(rtcEpoch)) {
+            rtcTimeValid = true;
+            internalEpoch = rtcEpoch;
+            driftCompensation = 1.0f;
+            rtcMicrosAtLastSync = micros();
+            lastRTCRebase = millis();
+            rtcInitialized = true;
+            timeSource = TIME_SOURCE_RTC;
+            return true;
+        }
     }
     return false;
 }
@@ -2690,7 +2690,10 @@ void loop() {
         healer.smartRecovery();
     }
     checkAndCleanMemory();
-    if (rtcPresent && rtcTimeValid && rtcInitialized) {
+    bool ntpIsFresh = (timeSource == TIME_SOURCE_NTP) &&
+                      (lastNTPSync > 0) &&
+                      !timeHasElapsed(now, lastNTPSync, getNTPInterval() * 2UL);
+    if (rtcPresent && rtcTimeValid && rtcInitialized && !ntpIsFresh) {
         if (timeHasElapsed(now, lastRTCDSync, DS3231_SYNC_INTERVAL)) {
             lastRTCDSync = now;
             if (rtc.begin()) {
@@ -2702,9 +2705,7 @@ void loop() {
                         driftCompensation = 1.0f;
                         rtcMicrosAtLastSync = micros();
                         lastRTCRebase = millis();
-                        if (timeSource != TIME_SOURCE_NTP) {
-                            timeSource = TIME_SOURCE_RTC;
-                        }
+                        timeSource = TIME_SOURCE_RTC;
                     }
                 }
             }
