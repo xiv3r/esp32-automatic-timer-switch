@@ -1255,8 +1255,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
             relayConfigs[relayIdx].schedule.monthDays[slot] = md;
         }
         if (doc.containsKey("monthMask")) {
-            uint16_t mm = doc["monthMask"];
-            relayConfigs[relayIdx].schedule.monthMask[slot] = (mm == 0) ? MONTH_ALL : mm;
+            relayConfigs[relayIdx].schedule.monthMask[slot] = doc["monthMask"].as<uint16_t>();
         }
         saveConfiguration();
         updateScheduleCache();
@@ -1476,12 +1475,12 @@ nav a:hover,nav a.cur{background:rgba(255,255,255,.2);color:#fff}
 main{max-width:1200px;margin:0 auto;padding:16px}
 .ptitle{font-size:17px;font-weight:700;color:#1565C0;margin-bottom:14px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
-.card{background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:16px;transition:box-shadow .2s;min-width:0}
+.card{background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:16px;transition:box-shadow .2s}
 .card:hover{box-shadow:0 4px 18px rgba(0,0,0,.13)}
-.card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;min-width:0}
-.ctitle{font-weight:700;font-size:15px;cursor:pointer;transition:background .15s;padding:2px 4px;border-radius:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.ctitle{font-weight:700;font-size:15px;cursor:pointer;transition:background .15s;padding:2px 4px;border-radius:4px}
 .ctitle:hover{background:#E3F2FD;color:#1565C0}
-.badge{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;flex-shrink:0}
+.badge{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
 .bon{background:#E8F5E9;color:#2E7D32}.boff{background:#FFEBEE;color:#C62828}.bman{background:#FFF3E0;color:#E65100}
 .brow{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
 .btn{border:none;padding:7px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;transition:.15s}
@@ -1491,12 +1490,11 @@ main{max-width:1200px;margin:0 auto;padding:16px}
 .bsync{background:#FB8C00;color:#fff}.bdanger{background:#B71C1C;color:#fff}.bwarn{background:#F9A825;color:#212121}
 .bscan{background:#0288D1;color:#fff}
 .slist{display:flex;flex-direction:column;gap:6px;margin-bottom:8px;max-height:500px;overflow-y:auto;padding-right:2px}
-.si{border:1px solid #E3E8EF;border-radius:7px;padding:9px;min-width:0;overflow:hidden}
+.si{border:1px solid #E3E8EF;border-radius:7px;padding:9px}
 .si.act{border-color:#90CAF9;background:#F0F7FF}
-.shdr{display:flex;align-items:center;gap:7px;margin-bottom:7px;font-size:11px;font-weight:700;color:#607D8B;text-transform:uppercase;min-width:0;flex-wrap:nowrap}
-.shdr label{display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;font-weight:700;color:#1A1A2E;text-transform:none;flex-shrink:0}
-.shdr > span{min-width:0;margin-left:auto;display:flex;justify-content:flex-end;overflow:hidden}
-.trow{display:flex;align-items:center;gap:8px;font-size:12px;margin-top:5px;min-width:0}
+.shdr{display:flex;align-items:center;gap:7px;margin-bottom:7px;font-size:11px;font-weight:700;color:#607D8B;text-transform:uppercase}
+.shdr label{display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;font-weight:700;color:#1A1A2E;text-transform:none}
+.trow{display:flex;align-items:center;gap:8px;font-size:12px;margin-top:5px}
 .trow .l{color:#90A4AE;font-weight:600;width:32px;flex-shrink:0}
 .days{display:flex;gap:3px;margin-top:5px;flex-wrap:wrap}
 .day{width:28px;height:24px;border-radius:4px;border:1px solid #CFD8DC;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;cursor:pointer;background:#FAFAFA;transition:.15s;user-select:none}
@@ -1511,7 +1509,7 @@ main{max-width:1200px;margin:0 auto;padding:16px}
 .month:hover{border-color:#90CAF9;background:#E3F2FD}
 .month.on{background:#1565C0;color:#fff;border-color:#1565C0}
 .sched-section{margin-top:4px;font-size:10px;font-weight:600;color:#90A4AE;text-transform:uppercase;margin-bottom:2px}
-.night{font-size:10px;color:#0D47A1;background:#E3F2FD;padding:2px 6px;border-radius:4px;margin-left:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;display:inline-block;vertical-align:middle}
+.night{font-size:10px;color:#0D47A1;background:#E3F2FD;padding:2px 6px;border-radius:4px;margin-left:auto}
 .night.always{background:#E8F5E9;color:#2E7D32}
 input[type=time]{flex:1;padding:5px 8px;border:1px solid #CFD8DC;border-radius:5px;font-size:13px;font-family:monospace;background:#FAFAFA;cursor:pointer;min-width:0}
 input[type=time]:focus{outline:none;border-color:#1565C0;box-shadow:0 0 0 3px rgba(21,101,192,.15);background:#fff}
@@ -1576,145 +1574,75 @@ const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'
 function toast(m,ok=true){const t=document.getElementById('toast');t.textContent=m;t.className='show '+(ok?'ok':'er');clearTimeout(t._t);t._t=setTimeout(()=>t.className='',3000);}
 function tick(){fetch('/api/time').then(r=>r.json()).then(d=>{document.getElementById('clk').textContent=d.time||'--:--:--';const w=document.querySelector('.wd'),t=document.querySelector('.td');if(w)w.className='dot '+(d.wifi?'g':'r');if(t){let tc='y';if(d.timeSource==='ntp')tc='g';else if(d.timeSource==='browser')tc='b';else if(d.timeSource==='rtc')tc='b';else tc='y';t.className='dot '+tc;}}).catch(()=>{});}
 setInterval(tick,1000);tick();
-
 const NS=8;
 let relays=[],busy=false;
 let editingRelay = -1;
 let editingInput = null;
-
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
+function escapeHtml(text) { const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
 function load(){
   if(busy)return;
-  fetch('/api/relays').then(r=>r.json()).then(d=>{relays=d;render();}).catch(()=>toast('Load error',false));
+  fetch('/api/relays').then(r=>r.json()).then(d=>{
+    if(Array.isArray(d)){
+      d.forEach(r=>{
+        if(r && Array.isArray(r.schedules)){
+          r.schedules.forEach(s=>{
+            if(s.monthDays === 0x7FFFFFFF || s.monthDays === 0xFFFFFFFF) s.monthDays = 0;
+          });
+        }
+      });
+    }
+    relays=d;render();
+  }).catch(()=>toast('Load error',false));
 }
-
 function toTS(h,m,s){return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');}
 function fromTS(v){const p=(v||'00:00:00').split(':');return{h:parseInt(p[0])||0,m:parseInt(p[1])||0,s:parseInt(p[2])||0};}
-
-function dayMaskToStr(d){
-  if(d===0x7F) return 'Everyday';
-  let s='';
-  for(let i=0;i<7;i++) if(d&(1<<i)) s+=D[i]+' ';
-  return s.trim()||'None';
-}
-
-function monthDayMaskToStr(md){
-  if(md===0) return '';
-  if(md===0xFFFFFFFF || md===0x7FFFFFFF) return 'All days';
-  const days=[];
-  for(let i=0;i<31;i++) if(md&(1<<i)) days.push(i+1);
-  if(days.length===0) return 'None';
-  if(days.length<=4) return days.join(',');
-  return days.slice(0,3).join(',') + ' +' + (days.length-3) + ' more';
-}
-
-function monthDayMaskFullStr(md){
-  if(md===0) return 'All days';
-  if(md===0xFFFFFFFF || md===0x7FFFFFFF) return 'All month days';
-  const s=[];
-  for(let i=0;i<31;i++) if(md&(1<<i)) s.push(i+1);
-  return s.join(',') || 'None';
-}
-
-function monthMaskToStr(mm) {
-  if (mm === 0x0FFF || mm === 0) return 'All months';
-  const months=[];
-  for(let i=0;i<12;i++) if(mm&(1<<i)) months.push(M[i]);
-  if(months.length===0) return 'None';
-  if(months.length<=4) return months.join(' ');
-  return months.slice(0,3).join(' ') + ' +' + (months.length-3) + ' more';
-}
-
-function monthMaskFullStr(mm){
-  if(mm===0x0FFF || mm===0) return 'All months';
-  const months=[];
-  for(let i=0;i<12;i++) if(mm&(1<<i)) months.push(M[i]);
-  return months.join(' ') || 'None';
-}
-
+function dayMaskToStr(d){ if(d===0x7F) return 'Everyday'; let s=''; for(let i=0;i<7;i++) if(d&(1<<i)) s+=D[i]+' '; return s.trim()||'None'; }
+function monthDayMaskToStr(md){ if(md===0) return ''; if(md===0xFFFFFFFF) return 'All month days'; if(md===0x7FFFFFFF) return ''; let s=''; for(let i=0;i<31;i++) if(md&(1<<i)) s+=(i+1)+','; return s.replace(/,$/,'')||'None'; }
+function monthMaskToStr(mm) { if (mm === 0x0FFF) return 'All months'; if (mm === 0 || mm === undefined || mm === null) return ''; let s=''; for(let i=0;i<12;i++) if(mm&(1<<i)) s+=M[i]+' '; return s.trim()||'None'; }
 function nightBadge(sc){
   if(!sc.enabled)return'';
   const a=sc.startHour*3600+sc.startMinute*60+sc.startSecond;
   const b=sc.stopHour*3600+sc.stopMinute*60+sc.stopSecond;
-  const ds=dayMaskToStr(sc.days);
-  const ms=monthDayMaskToStr(sc.monthDays||0);
-  const msFull=monthDayMaskFullStr(sc.monthDays||0);
-  const mm=monthMaskToStr(sc.monthMask||0x0FFF);
-  const mmFull=monthMaskFullStr(sc.monthMask||0x0FFF);
+  const ds=dayMaskToStr(sc.days === undefined ? 0x7F : sc.days);
+  const ms=monthDayMaskToStr(sc.monthDays === undefined ? 0 : sc.monthDays);
+  const mm=monthMaskToStr(sc.monthMask === undefined ? 0x0FFF : sc.monthMask);
   let info=ds;
   if(ms) info+=' | Days:'+ms;
-  if(mm!=='All months') info+=' | Months:'+mm;
-  const tip='Days: '+msFull+' | Months: '+mmFull;
-  if(a===b)return'<span class="night always" title="'+escapeHtml(tip)+'">&#x25CF; Always ON ('+info+')</span>';
-  if(a>b) return'<span class="night" title="'+escapeHtml(tip)+'">&#x1F319; Overnight ('+info+')</span>';
-  return'<span class="night" title="'+escapeHtml(tip)+'">&#x1F319; '+info+'</span>';
+  if(mm && mm!=='All months') info+=' | Months:'+mm;
+  if(a===b)return'<span class="night always">&#x25CF; Always ON ('+info+')</span>';
+  if(a>b) return'<span class="night">&#x1F319; Overnight ('+info+')</span>';
+  return'<span class="night">&#x1F319; '+info+'</span>';
 }
-
 function startEditName(relayIdx) {
   if (editingRelay !== -1) cancelEdit();
   const nameSpan = document.getElementById('name_' + relayIdx);
   if (!nameSpan) return;
   const currentName = relays[relayIdx].name || ('Relay ' + (relayIdx + 1));
   const input = document.createElement('input');
-  input.type = 'text';
-  input.value = currentName;
-  input.maxLength = 15;
+  input.type = 'text'; input.value = currentName; input.maxLength = 15;
   input.style.cssText = 'font-size:15px;font-weight:700;padding:2px 6px;border:1px solid #1565C0;border-radius:5px;width:120px;background:#fff;color:#1A1A2E;';
   input.id = 'edit_' + relayIdx;
   input.onblur = () => saveNameEdit(relayIdx, input.value);
-  input.onkeydown = (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); saveNameEdit(relayIdx, input.value); }
-    else if (e.key === 'Escape') { cancelEdit(); }
-  };
+  input.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); saveNameEdit(relayIdx, input.value); } else if (e.key === 'Escape') { cancelEdit(); } };
   nameSpan.style.display = 'none';
   nameSpan.parentNode.insertBefore(input, nameSpan.nextSibling);
-  editingRelay = relayIdx;
-  editingInput = input;
-  input.focus();
-  input.select();
+  editingRelay = relayIdx; editingInput = input; input.focus(); input.select();
 }
-
-function cancelEdit() {
-  if (editingRelay !== -1) {
-    const nameSpan = document.getElementById('name_' + editingRelay);
-    if (nameSpan) nameSpan.style.display = '';
-    if (editingInput) editingInput.remove();
-    editingRelay = -1;
-    editingInput = null;
-  }
-}
-
+function cancelEdit() { if (editingRelay !== -1) { const nameSpan = document.getElementById('name_' + editingRelay); if (nameSpan) nameSpan.style.display = ''; if (editingInput) editingInput.remove(); editingRelay = -1; editingInput = null; } }
 function saveNameEdit(relayIdx, newName) {
-  newName = newName.trim();
-  if (newName.length === 0) newName = 'Relay ' + (relayIdx + 1);
+  newName = newName.trim(); if (newName.length === 0) newName = 'Relay ' + (relayIdx + 1);
   const nameSpan = document.getElementById('name_' + relayIdx);
   relays[relayIdx].name = newName;
   if (nameSpan) { nameSpan.textContent = newName; nameSpan.style.display = ''; }
   if (editingInput) editingInput.remove();
-  editingRelay = -1;
-  editingInput = null;
-  fetch('/api/relay/name', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({relay: relayIdx, name: newName})
-  })
-  .then(r => r.json())
-  .then(d => { if (d.success) toast('Name saved!'); else toast('Failed to save name', false); })
+  editingRelay = -1; editingInput = null;
+  fetch('/api/relay/name', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({relay: relayIdx, name: newName}) })
+  .then(r => r.json()).then(d => { if (d.success) toast('Name saved!'); else toast('Failed to save name', false); })
   .catch(() => toast('Error saving name', false));
 }
-
 function render(){
-  const g=document.getElementById('grid');
-  g.innerHTML='';
-  if (!relays || relays.length === 0) {
-    g.innerHTML = '<div class="card" style="text-align:center;padding:40px"><p style="color:#90A4AE">No relays configured. <a href="/gpio" style="color:#1565C0">Configure GPIO pins</a></p></div>';
-    return;
-  }
+  const g=document.getElementById('grid'); g.innerHTML='';
+  if (!relays || relays.length === 0) { g.innerHTML = '<div class="card" style="text-align:center;padding:40px"><p style="color:#90A4AE">No relays configured. <a href="/gpio" style="color:#1565C0">Configure GPIO pins</a></p></div>'; return; }
   relays.forEach((r,i)=>{
     const sl=r.manual?'MANUAL':r.state?'ON':'OFF';
     const sc=r.manual?'bman':r.state?'bon':'boff';
@@ -1732,9 +1660,10 @@ function render(){
 <div class="slist">`;
     for(let s=0;s<NS;s++){
       const sc2=r.schedules[s];
-      const dayBits = sc2.days || 0x7F;
-      const monthDayBits = sc2.monthDays || 0;
-      const monthMask = sc2.monthMask || 0x0FFF;
+      const dayBits = (sc2.days === undefined || sc2.days === null) ? 0x7F : sc2.days;
+      const rawMonthDayBits = (sc2.monthDays === undefined || sc2.monthDays === null) ? 0 : sc2.monthDays;
+      const monthDayBits = (rawMonthDayBits === 0x7FFFFFFF || rawMonthDayBits === 0xFFFFFFFF) ? 0 : rawMonthDayBits;
+      const monthMask = (sc2.monthMask === undefined || sc2.monthMask === null) ? 0x0FFF : sc2.monthMask;
       html+=`<div class="si${sc2.enabled?' act':''}" id="si_${i}_${s}">
 <div class="shdr">
 <label><input type="checkbox" id="en_${i}_${s}" ${sc2.enabled?'checked':''} onchange="uf(${i},${s},'en',this.checked)"> Sched ${s+1}</label>
@@ -1748,94 +1677,29 @@ function render(){
 </div>
 <div class="sched-section">Days of Week</div>
 <div class="days" id="day_${i}_${s}">`;
-      for(let d=0;d<7;d++){
-        const mask = 1<<d;
-        html+=`<div class="day${(dayBits&mask)?' on':''}" onclick="toggleDay(${i},${s},${d})">${D[d]}</div>`;
-      }
+      for(let d=0;d<7;d++){ const mask = 1<<d; html+=`<div class="day${(dayBits&mask)?' on':''}" onclick="toggleDay(${i},${s},${d})">${D[d]}</div>`; }
       html+=`</div>
 <div class="sched-section">Days of Month</div>
 <div class="mdays" id="mday_${i}_${s}">`;
-      for(let d=0;d<31;d++){
-        const mask = 1<<d;
-        html+=`<div class="mday${(monthDayBits&mask)?' on':''}" onclick="toggleMonthDay(${i},${s},${d})" title="Day ${d+1}">${d+1}</div>`;
-      }
+      for(let d=0;d<31;d++){ const mask = 1<<d; html+=`<div class="mday${(monthDayBits&mask)?' on':''}" onclick="toggleMonthDay(${i},${s},${d})" title="Day ${d+1}">${d+1}</div>`; }
       html+=`</div>
 <div class="sched-section">Months of Year</div>
 <div class="months" id="mon_${i}_${s}">`;
-      for(let m=0;m<12;m++){
-        const mask = 1<<m;
-        html+=`<div class="month${(monthMask&mask)?' on':''}" onclick="toggleMonth(${i},${s},${m})">${M[m]}</div>`;
-      }
+      for(let m=0;m<12;m++){ const mask = 1<<m; html+=`<div class="month${(monthMask&mask)?' on':''}" onclick="toggleMonth(${i},${s},${m})">${M[m]}</div>`; }
       html+=`</div>
 </div>`;
     }
     html+=`</div><button class="btn bsave" onclick="save(${i})">&#x1F4BE; Save ${escapeHtml(displayName)}</button></div>`;
-    const el=document.createElement('div');
-    el.innerHTML=html;
-    g.appendChild(el.firstChild);
+    const el=document.createElement('div'); el.innerHTML=html; g.appendChild(el.firstChild);
   });
 }
-
-function toggleDay(ri,si,dayIdx){
-  const mask = 1<<dayIdx;
-  relays[ri].schedules[si].days ^= mask;
-  const dayEl = document.getElementById('day_'+ri+'_'+si).children[dayIdx];
-  if(dayEl) dayEl.className = 'day' + ((relays[ri].schedules[si].days & mask)?' on':'');
-  const nb=document.getElementById('nb_'+ri+'_'+si);
-  if(nb)nb.innerHTML=nightBadge(relays[ri].schedules[si]);
-}
-
-function toggleMonthDay(ri,si,dayIdx){
-  const mask = 1<<dayIdx;
-  if(!relays[ri].schedules[si].monthDays) relays[ri].schedules[si].monthDays = 0;
-  relays[ri].schedules[si].monthDays ^= mask;
-  const mdayEl = document.getElementById('mday_'+ri+'_'+si).children[dayIdx];
-  if(mdayEl) mdayEl.className = 'mday' + ((relays[ri].schedules[si].monthDays & mask)?' on':'');
-  const nb=document.getElementById('nb_'+ri+'_'+si);
-  if(nb)nb.innerHTML=nightBadge(relays[ri].schedules[si]);
-}
-
-function toggleMonth(ri,si,mIdx){
-  const mask = 1<<mIdx;
-  if(!relays[ri].schedules[si].monthMask) relays[ri].schedules[si].monthMask = 0x0FFF;
-  relays[ri].schedules[si].monthMask ^= mask;
-  const monEl = document.getElementById('mon_'+ri+'_'+si).children[mIdx];
-  if(monEl) monEl.className = 'month' + ((relays[ri].schedules[si].monthMask & mask)?' on':'');
-  const nb=document.getElementById('nb_'+ri+'_'+si);
-  if(nb)nb.innerHTML=nightBadge(relays[ri].schedules[si]);
-}
-
-function uf(ri,si,field,val){
-  const sc=relays[ri].schedules[si];
-  if(field==='en'){
-    sc.enabled=val;
-    const el=document.getElementById('si_'+ri+'_'+si);
-    if(el)el.className='si'+(val?' act':'');
-  }else if(field==='start'){
-    const t=fromTS(val);sc.startHour=t.h;sc.startMinute=t.m;sc.startSecond=t.s;
-  }else if(field==='stop'){
-    const t=fromTS(val);sc.stopHour=t.h;sc.stopMinute=t.m;sc.stopSecond=t.s;
-  }
-  const nb=document.getElementById('nb_'+ri+'_'+si);
-  if(nb)nb.innerHTML=nightBadge(sc);
-}
-
-function mc(ri,state){
-  fetch('/api/relay/manual',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({relay:ri,state})})
-  .then(r=>r.json()).then(d=>{if(d.success){toast((relays[ri].name||('Relay '+(ri+1)))+' '+(state?'ON':'OFF'));load();}else toast('Failed',false);})
-  .catch(()=>toast('Error',false));
-}
-function ra(ri){
-  fetch('/api/relay/reset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({relay:ri})})
-  .then(r=>r.json()).then(d=>{if(d.success){toast((relays[ri].name||('Relay '+(ri+1)))+' \u2192 Auto');load();}else toast('Failed',false);})
-  .catch(()=>toast('Error',false));
-}
-function save(ri){
-  busy=true;
-  fetch('/api/relay/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({relay:ri,schedules:relays[ri].schedules})})
-  .then(r=>r.json()).then(d=>{busy=false;if(d.success)toast((relays[ri].name||('Relay '+(ri+1)))+' saved!');else toast('Save failed',false);})
-  .catch(()=>{busy=false;toast('Error',false);});
-}
+function toggleDay(ri,si,dayIdx){ const mask = 1<<dayIdx; let cur = relays[ri].schedules[si].days; if(cur === undefined || cur === null) cur = 0x7F; cur ^= mask; relays[ri].schedules[si].days = cur; const dayEl = document.getElementById('day_'+ri+'_'+si).children[dayIdx]; if(dayEl) dayEl.className = 'day' + ((cur & mask)?' on':''); const nb=document.getElementById('nb_'+ri+'_'+si); if(nb)nb.innerHTML=nightBadge(relays[ri].schedules[si]); }
+function toggleMonthDay(ri,si,dayIdx){ const mask = 1<<dayIdx; let cur = relays[ri].schedules[si].monthDays || 0; if(cur === 0x7FFFFFFF || cur === 0xFFFFFFFF) cur = 0; cur ^= mask; relays[ri].schedules[si].monthDays = cur; const mdayEl = document.getElementById('mday_'+ri+'_'+si).children[dayIdx]; if(mdayEl) mdayEl.className = 'mday' + ((cur & mask)?' on':''); const nb=document.getElementById('nb_'+ri+'_'+si); if(nb)nb.innerHTML=nightBadge(relays[ri].schedules[si]); }
+function toggleMonth(ri,si,mIdx){ const mask = 1<<mIdx; let cur = relays[ri].schedules[si].monthMask; if(cur === undefined || cur === null) cur = 0x0FFF; cur ^= mask; relays[ri].schedules[si].monthMask = cur; const monEl = document.getElementById('mon_'+ri+'_'+si).children[mIdx]; if(monEl) monEl.className = 'month' + ((cur & mask)?' on':''); const nb=document.getElementById('nb_'+ri+'_'+si); if(nb)nb.innerHTML=nightBadge(relays[ri].schedules[si]); }
+function uf(ri,si,field,val){ const sc=relays[ri].schedules[si]; if(field==='en'){ sc.enabled=val; const el=document.getElementById('si_'+ri+'_'+si); if(el)el.className='si'+(val?' act':''); } else if(field==='start'){ const t=fromTS(val);sc.startHour=t.h;sc.startMinute=t.m;sc.startSecond=t.s; } else if(field==='stop'){ const t=fromTS(val);sc.stopHour=t.h;sc.stopMinute=t.m;sc.stopSecond=t.s; } const nb=document.getElementById('nb_'+ri+'_'+si); if(nb)nb.innerHTML=nightBadge(sc); }
+function mc(ri,state){ fetch('/api/relay/manual',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({relay:ri,state})}).then(r=>r.json()).then(d=>{if(d.success){toast((relays[ri].name||('Relay '+(ri+1)))+' '+(state?'ON':'OFF'));load();}else toast('Failed',false);}).catch(()=>toast('Error',false)); }
+function ra(ri){ fetch('/api/relay/reset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({relay:ri})}).then(r=>r.json()).then(d=>{if(d.success){toast((relays[ri].name||('Relay '+(ri+1)))+' \u2192 Auto');load();}else toast('Failed',false);}).catch(()=>toast('Error',false)); }
+function save(ri){ busy=true; fetch('/api/relay/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({relay:ri,schedules:relays[ri].schedules})}).then(r=>r.json()).then(d=>{busy=false;if(d.success)toast((relays[ri].name||('Relay '+(ri+1)))+' saved!');else toast('Save failed',false);}).catch(()=>{busy=false;toast('Error',false);}); }
 load();
 </script></body></html>)raw";
 
@@ -2854,25 +2718,25 @@ void updateScheduleCache() {
                      + relayConfigs[i].schedule.stopMinute[s] * 60
                      + relayConfigs[i].schedule.stopSecond[s];
             if (start == stop) {
-                if (monthMask && !(monthMask & (1 << currentMonth))) continue;
-                if (monthDayMask && !(monthDayMask & (1 << (currentMonthDay - 1)))) continue;
+                if (!(monthMask & (1 << currentMonth))) continue;
+                if (!(monthDayMask & (1 << (currentMonthDay - 1)))) continue;
                 if (relayConfigs[i].schedule.days[s] & cachedTodayBit) { hasActive = true; break; }
             } else if (start < stop) {
-                if (monthMask && !(monthMask & (1 << currentMonth))) continue;
-                if (monthDayMask && !(monthDayMask & (1 << (currentMonthDay - 1)))) continue;
+                if (!(monthMask & (1 << currentMonth))) continue;
+                if (!(monthDayMask & (1 << (currentMonthDay - 1)))) continue;
                 if ((relayConfigs[i].schedule.days[s] & cachedTodayBit) && cur >= start && cur < stop) { hasActive = true; break; }
             } else {
                 if (cur >= start) {
-                    if (monthMask && !(monthMask & (1 << currentMonth))) continue;
-                    if (monthDayMask && !(monthDayMask & (1 << (currentMonthDay - 1)))) continue;
+                    if (!(monthMask & (1 << currentMonth))) continue;
+                    if (!(monthDayMask & (1 << (currentMonthDay - 1)))) continue;
                     if (relayConfigs[i].schedule.days[s] & (1 << currentWeekday)) { hasActive = true; break; }
                 } else if (cur < stop) {
                     uint64_t checkEpoch = epoch - 86400ULL;
                     uint64_t checkLocalEpoch = getLocalEpoch(checkEpoch);
                     struct tm* checkDate = gmtime64(&checkLocalEpoch);
                     if (checkDate) {
-                        if (monthMask && !(monthMask & (1 << checkDate->tm_mon))) continue;
-                        if (monthDayMask && !(monthDayMask & (1 << (checkDate->tm_mday - 1)))) continue;
+                        if (!(monthMask & (1 << checkDate->tm_mon))) continue;
+                        if (!(monthDayMask & (1 << (checkDate->tm_mday - 1)))) continue;
                         if (relayConfigs[i].schedule.days[s] & (1 << checkDate->tm_wday)) { hasActive = true; break; }
                     }
                 }
@@ -2928,25 +2792,25 @@ void processRelaySchedules() {
                      + relayConfigs[i].schedule.stopMinute[s] * 60
                      + relayConfigs[i].schedule.stopSecond[s];
             if (start == stop) {
-                if (monthMask && !(monthMask & (1 << currentMonthVal))) continue;
-                if (monthDayMask && !(monthDayMask & (1 << (monthDay - 1)))) continue;
+                if (!(monthMask & (1 << currentMonthVal))) continue;
+                if (!(monthDayMask & (1 << (monthDay - 1)))) continue;
                 if (relayConfigs[i].schedule.days[s] & todayBit) { shouldBeOn = true; break; }
             } else if (start < stop) {
-                if (monthMask && !(monthMask & (1 << currentMonthVal))) continue;
-                if (monthDayMask && !(monthDayMask & (1 << (monthDay - 1)))) continue;
+                if (!(monthMask & (1 << currentMonthVal))) continue;
+                if (!(monthDayMask & (1 << (monthDay - 1)))) continue;
                 if ((relayConfigs[i].schedule.days[s] & todayBit) && cur >= start && cur < stop) { shouldBeOn = true; break; }
             } else {
                 if (cur >= start) {
-                    if (monthMask && !(monthMask & (1 << currentMonthVal))) continue;
-                    if (monthDayMask && !(monthDayMask & (1 << (monthDay - 1)))) continue;
+                    if (!(monthMask & (1 << currentMonthVal))) continue;
+                    if (!(monthDayMask & (1 << (monthDay - 1)))) continue;
                     if (relayConfigs[i].schedule.days[s] & (1 << currentWeekday)) { shouldBeOn = true; break; }
                 } else if (cur < stop) {
                     uint64_t checkEpoch = epoch - 86400ULL;
                     uint64_t checkLocalEpoch = getLocalEpoch(checkEpoch);
                     struct tm* checkDate = gmtime64(&checkLocalEpoch);
                     if (checkDate) {
-                        if (monthMask && !(monthMask & (1 << checkDate->tm_mon))) continue;
-                        if (monthDayMask && !(monthDayMask & (1 << (checkDate->tm_mday - 1)))) continue;
+                        if (!(monthMask & (1 << checkDate->tm_mon))) continue;
+                        if (!(monthDayMask & (1 << (checkDate->tm_mday - 1)))) continue;
                         if (relayConfigs[i].schedule.days[s] & (1 << checkDate->tm_wday)) { shouldBeOn = true; break; }
                     }
                 }
@@ -3520,12 +3384,19 @@ void handleSaveRelay() {
         relayConfigs[relay].schedule.stopMinute[s]  = em;
         relayConfigs[relay].schedule.stopSecond[s]  = es;
         relayConfigs[relay].schedule.enabled[s]     = sch["enabled"];
-        relayConfigs[relay].schedule.days[s]        = sch["days"] | 0;
+        if (sch.containsKey("days")) {
+            relayConfigs[relay].schedule.days[s] = sch["days"].as<uint8_t>();
+        } else {
+            relayConfigs[relay].schedule.days[s] = DAY_ALL;
+        }
         uint32_t rawMonthDays = sch["monthDays"] | 0;
         if (rawMonthDays == 0) rawMonthDays = 0x7FFFFFFFUL;
         relayConfigs[relay].schedule.monthDays[s] = rawMonthDays;
-        uint16_t rawMonthMask = sch["monthMask"] | 0;
-        relayConfigs[relay].schedule.monthMask[s] = (rawMonthMask == 0) ? MONTH_ALL : rawMonthMask;
+        if (sch.containsKey("monthMask")) {
+            relayConfigs[relay].schedule.monthMask[s] = sch["monthMask"].as<uint16_t>();
+        } else {
+            relayConfigs[relay].schedule.monthMask[s] = MONTH_ALL;
+        }
         s++;
     }
     saveConfiguration();
