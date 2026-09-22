@@ -1091,7 +1091,8 @@ function monthDayMaskToStr(md){
 }
 
 function monthMaskToStr(mm) {  
-  if (mm === 0x0FFF || mm === 0) return 'All months';
+  if (mm === 0x0FFF) return 'All months';
+  if (mm === 0 || mm === undefined || mm === null) return '';
   let s='';
   for(let i=0;i<12;i++) if(mm&(1<<i)) s+=M[i]+' ';
   return s.trim()||'None';
@@ -1101,12 +1102,12 @@ function nightBadge(sc){
   if(!sc.enabled)return'';
   const a=sc.startHour*3600+sc.startMinute*60+sc.startSecond;
   const b=sc.stopHour*3600+sc.stopMinute*60+sc.stopSecond;
-  const ds=dayMaskToStr(sc.days);
-  const ms=monthDayMaskToStr(sc.monthDays||0);
-  const mm=monthMaskToStr(sc.monthMask||0x0FFF);  
+  const ds=dayMaskToStr(sc.days === undefined ? 0x7F : sc.days);
+  const ms=monthDayMaskToStr(sc.monthDays === undefined ? 0 : sc.monthDays);
+  const mm=monthMaskToStr(sc.monthMask === undefined ? 0x0FFF : sc.monthMask);  
   let info=ds;
   if(ms) info+=' | Days:'+ms;
-  if(mm!=='All months') info+=' | Months:'+mm;  
+  if(mm && mm!=='All months') info+=' | Months:'+mm;  
   if(a===b)return'<span class="night always">&#x25CF; Always ON ('+info+')</span>';
   if(a>b) return'<span class="night">&#x1F319; Overnight ('+info+')</span>';
   return'<span class="night">&#x1F319; '+info+'</span>';
@@ -1213,10 +1214,10 @@ function render(){
 <div class="slist">`;
     for(let s=0;s<NS;s++){
       const sc2=r.schedules[s];
-      const dayBits = sc2.days || 0x7F;
-      const rawMonthDayBits = sc2.monthDays || 0;
+      const dayBits = (sc2.days === undefined || sc2.days === null) ? 0x7F : sc2.days;
+      const rawMonthDayBits = (sc2.monthDays === undefined || sc2.monthDays === null) ? 0 : sc2.monthDays;
       const monthDayBits = (rawMonthDayBits === 0x7FFFFFFF || rawMonthDayBits === 0xFFFFFFFF) ? 0 : rawMonthDayBits;
-      const monthMask = sc2.monthMask || 0x0FFF;  
+      const monthMask = (sc2.monthMask === undefined || sc2.monthMask === null) ? 0x0FFF : sc2.monthMask;  
       html+=`<div class="si${sc2.enabled?' act':''}" id="si_${i}_${s}">
 <div class="shdr">
 <label><input type="checkbox" id="en_${i}_${s}" ${sc2.enabled?'checked':''} onchange="uf(${i},${s},'en',this.checked)"> Sched ${s+1}</label>
@@ -1281,10 +1282,12 @@ function toggleMonthDay(ri,si,dayIdx){
 
 function toggleMonth(ri,si,mIdx){  
   const mask = 1<<mIdx;
-  if(!relays[ri].schedules[si].monthMask) relays[ri].schedules[si].monthMask = 0x0FFF;
-  relays[ri].schedules[si].monthMask ^= mask;
+  let cur = relays[ri].schedules[si].monthMask;
+  if(cur === undefined || cur === null) cur = 0x0FFF;
+  cur ^= mask;
+  relays[ri].schedules[si].monthMask = cur;
   const monEl = document.getElementById('mon_'+ri+'_'+si).children[mIdx];
-  if(monEl) monEl.className = 'month' + ((relays[ri].schedules[si].monthMask & mask)?' on':'');
+  if(monEl) monEl.className = 'month' + ((cur & mask)?' on':'');
   const nb=document.getElementById('nb_'+ri+'_'+si);
   if(nb)nb.innerHTML=nightBadge(relays[ri].schedules[si]);
 }
@@ -2396,15 +2399,15 @@ void updateScheduleCache() {
                      + relayConfigs[i].schedule.stopMinute[s] * 60
                      + relayConfigs[i].schedule.stopSecond[s];
             if (start == stop) {
-                if (monthMask && !(monthMask & (1 << currentMonth))) continue;
-                if (monthDayMask && !(monthDayMask & (1 << (currentMonthDay - 1)))) continue;
+                if (!(monthMask & (1 << currentMonth))) continue;
+                if (!(monthDayMask & (1 << (currentMonthDay - 1)))) continue;
                 if (relayConfigs[i].schedule.days[s] & cachedTodayBit) {
                     hasActive = true;
                     break;
                 }
             } else if (start < stop) {
-                if (monthMask && !(monthMask & (1 << currentMonth))) continue;
-                if (monthDayMask && !(monthDayMask & (1 << (currentMonthDay - 1)))) continue;
+                if (!(monthMask & (1 << currentMonth))) continue;
+                if (!(monthDayMask & (1 << (currentMonthDay - 1)))) continue;
                 if ((relayConfigs[i].schedule.days[s] & cachedTodayBit) &&
                     cur >= start && cur < stop) {
                     hasActive = true;
@@ -2412,8 +2415,8 @@ void updateScheduleCache() {
                 }
             } else {
                 if (cur >= start) {
-                    if (monthMask && !(monthMask & (1 << currentMonth))) continue;
-                    if (monthDayMask && !(monthDayMask & (1 << (currentMonthDay - 1)))) continue;
+                    if (!(monthMask & (1 << currentMonth))) continue;
+                    if (!(monthDayMask & (1 << (currentMonthDay - 1)))) continue;
                     if (relayConfigs[i].schedule.days[s] & (1 << currentWeekday)) {
                         hasActive = true;
                         break;
@@ -2423,8 +2426,8 @@ void updateScheduleCache() {
                     uint64_t checkLocalEpoch = getLocalEpoch(checkEpoch);
                     struct tm* checkDate = gmtime64(&checkLocalEpoch);
                     if (checkDate) {
-                        if (monthMask && !(monthMask & (1 << checkDate->tm_mon))) continue;
-                        if (monthDayMask && !(monthDayMask & (1 << (checkDate->tm_mday - 1)))) continue;
+                        if (!(monthMask & (1 << checkDate->tm_mon))) continue;
+                        if (!(monthDayMask & (1 << (checkDate->tm_mday - 1)))) continue;
                         if (relayConfigs[i].schedule.days[s] & (1 << checkDate->tm_wday)) {
                             hasActive = true;
                             break;
@@ -2483,15 +2486,15 @@ void processRelaySchedules() {
                      + relayConfigs[i].schedule.stopMinute[s] * 60
                      + relayConfigs[i].schedule.stopSecond[s];
             if (start == stop) {
-                if (monthMask && !(monthMask & (1 << currentMonthVal))) continue;
-                if (monthDayMask && !(monthDayMask & (1 << (monthDay - 1)))) continue;
+                if (!(monthMask & (1 << currentMonthVal))) continue;
+                if (!(monthDayMask & (1 << (monthDay - 1)))) continue;
                 if (relayConfigs[i].schedule.days[s] & todayBit) {
                     shouldBeOn = true;
                     break;
                 }
             } else if (start < stop) {
-                if (monthMask && !(monthMask & (1 << currentMonthVal))) continue;
-                if (monthDayMask && !(monthDayMask & (1 << (monthDay - 1)))) continue;
+                if (!(monthMask & (1 << currentMonthVal))) continue;
+                if (!(monthDayMask & (1 << (monthDay - 1)))) continue;
                 if ((relayConfigs[i].schedule.days[s] & todayBit) &&
                     cur >= start && cur < stop) {
                     shouldBeOn = true;
@@ -2499,8 +2502,8 @@ void processRelaySchedules() {
                 }
             } else {
                 if (cur >= start) {
-                    if (monthMask && !(monthMask & (1 << currentMonthVal))) continue;
-                    if (monthDayMask && !(monthDayMask & (1 << (monthDay - 1)))) continue;
+                    if (!(monthMask & (1 << currentMonthVal))) continue;
+                    if (!(monthDayMask & (1 << (monthDay - 1)))) continue;
                     if (relayConfigs[i].schedule.days[s] & (1 << currentWeekday)) {
                         shouldBeOn = true;
                         break;
@@ -2510,8 +2513,8 @@ void processRelaySchedules() {
                     uint64_t checkLocalEpoch = getLocalEpoch(checkEpoch);
                     struct tm* checkDate = gmtime64(&checkLocalEpoch);
                     if (checkDate) {
-                        if (monthMask && !(monthMask & (1 << checkDate->tm_mon))) continue;
-                        if (monthDayMask && !(monthDayMask & (1 << (checkDate->tm_mday - 1)))) continue;
+                        if (!(monthMask & (1 << checkDate->tm_mon))) continue;
+                        if (!(monthDayMask & (1 << (checkDate->tm_mday - 1)))) continue;
                         if (relayConfigs[i].schedule.days[s] & (1 << checkDate->tm_wday)) {
                             shouldBeOn = true;
                             break;
@@ -3140,8 +3143,11 @@ void handleSaveRelay() {
         uint32_t rawMonthDays = sch["monthDays"] | 0;
         if (rawMonthDays == 0) rawMonthDays = 0x7FFFFFFFUL;
         relayConfigs[relay].schedule.monthDays[s] = rawMonthDays;
-        uint16_t rawMonthMask = sch["monthMask"] | 0;
-        relayConfigs[relay].schedule.monthMask[s] = (rawMonthMask == 0) ? MONTH_ALL : rawMonthMask;
+        if (sch.containsKey("monthMask")) {
+            relayConfigs[relay].schedule.monthMask[s] = sch["monthMask"].as<uint16_t>();
+        } else {
+            relayConfigs[relay].schedule.monthMask[s] = MONTH_ALL;
+        }
         s++;
     }
     saveConfiguration();
