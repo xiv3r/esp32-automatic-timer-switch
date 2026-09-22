@@ -1261,9 +1261,12 @@ function render(){
 
 function toggleDay(ri,si,dayIdx){
   const mask = 1<<dayIdx;
-  relays[ri].schedules[si].days ^= mask;
+  let cur = relays[ri].schedules[si].days;
+  if(cur === undefined || cur === null) cur = 0x7F;
+  cur ^= mask;
+  relays[ri].schedules[si].days = cur;
   const dayEl = document.getElementById('day_'+ri+'_'+si).children[dayIdx];
-  if(dayEl) dayEl.className = 'day' + ((relays[ri].schedules[si].days & mask)?' on':'');
+  if(dayEl) dayEl.className = 'day' + ((cur & mask)?' on':'');
   const nb=document.getElementById('nb_'+ri+'_'+si);
   if(nb)nb.innerHTML=nightBadge(relays[ri].schedules[si]);
 }
@@ -3138,8 +3141,16 @@ void handleSaveRelay() {
         relayConfigs[relay].schedule.stopHour[s]    = eh;
         relayConfigs[relay].schedule.stopMinute[s]  = em;
         relayConfigs[relay].schedule.stopSecond[s]  = es;
-        relayConfigs[relay].schedule.enabled[s]     = sch["enabled"];
-        relayConfigs[relay].schedule.days[s]        = sch["days"] | 0;
+        if (sch.containsKey("enabled")) {
+            relayConfigs[relay].schedule.enabled[s] = sch["enabled"].as<bool>();
+        } else {
+            relayConfigs[relay].schedule.enabled[s] = false;
+        }
+        if (sch.containsKey("days")) {
+            relayConfigs[relay].schedule.days[s] = sch["days"].as<uint8_t>();
+        } else {
+            relayConfigs[relay].schedule.days[s] = DAY_ALL;
+        }
         uint32_t rawMonthDays = sch["monthDays"] | 0;
         if (rawMonthDays == 0) rawMonthDays = 0x7FFFFFFFUL;
         relayConfigs[relay].schedule.monthDays[s] = rawMonthDays;
