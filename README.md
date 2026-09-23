@@ -5,7 +5,7 @@
 
 ## Requirements
 - ESP32 30/38P Pins
-- DS3231 RTC Module (offline recommend)
+- DS3231 RTC Module + CR2032 battery (offline recommend)
 - 5v 1-16 Channel Relay
 - Female to Female Dupont Wire
 - 5v 2-5a Power supply
