@@ -2041,8 +2041,8 @@ const char gpio_html[] PROGMEM = R"raw(<!DOCTYPE html>
 <h3 style="margin-bottom:10px">Configured Relays (<span id="relayCount">0</span>)</h3>
 <div id="pins"></div>
 </div>
-<div style="margin-top:16px;display:flex;gap:8px">
-<button class="btn bsave" onclick="resetDefaults()" style="margin-top:0;width:auto;padding:9px 20px">&#x1F504; Reset to Default</button>
+<div style="margin-top:16px">
+<button class="btn bsave" onclick="resetDefaults()" style="margin-top:0;width:100%;padding:9px 20px;background:#1565C0;color:#fff;font-size:13px;font-weight:600;border-radius:6px">&#x1F504; Reset to Default</button>
 </div>
 </div>
 </main>
