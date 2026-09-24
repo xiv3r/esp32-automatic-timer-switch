@@ -1,0 +1,36 @@
+/* ESP32-S3: 16 active-LOW relays, DS3231 clock, Wi-Fi web UI.
+   Each relay has 8 START and 8 STOP rules. A rule field of 0 means "any".
+   day = day-of-year (1..366), dow = Sunday 1..Saturday 7,
+   dom = day-of-month (1..31), month = 1..12. 
+*/
+
+#include <WiFi.h>
+#include <WebServer.h>
+#include <Preferences.h>
+#include <Wire.h>
+#include <RTClib.h>
+
+const char* AP_SSID = "RelayController";
+const char* AP_PASS = "relay-control";
+const uint8_t pins[16] = {4,5,6,7,11,12,13,14,1,2,42,41,47,21,20,19};
+const uint8_t SDA_PIN=8, SCL_PIN=9, ACTIVE=LOW, INACTIVE=HIGH;
+struct Rule { uint8_t enabled, sec, min, hour, day, dow, dom, month; };
+Rule startRules[16][8], stopRules[16][8];
+bool relayState[16] = {};
+WebServer server(80); Preferences prefs; RTC_DS3231 rtc;
+
+void saveRules(){ prefs.begin("schedule",false); prefs.putBytes("start",startRules,sizeof(startRules)); prefs.putBytes("stop",stopRules,sizeof(stopRules)); prefs.end(); }
+void loadRules(){ memset(startRules,0,sizeof(startRules)); memset(stopRules,0,sizeof(stopRules)); prefs.begin("schedule",true); prefs.getBytes("start",startRules,sizeof(startRules)); prefs.getBytes("stop",stopRules,sizeof(stopRules)); prefs.end(); }
+void setRelay(uint8_t r,bool on){ if(r>=16)return; relayState[r]=on; digitalWrite(pins[r],on?ACTIVE:INACTIVE); }
+void setAll(bool on){ for(uint8_t r=0;r<16;r++) setRelay(r,on); }
+uint16_t dayOfYear(const DateTime&t){ static const uint16_t before[]={0,31,59,90,120,151,181,212,243,273,304,334}; uint16_t d=before[t.month()-1]+t.day(); if(t.month()>2 && t.year()%4==0)d++; return d; }
+bool field(uint8_t rule,uint8_t now){ return rule==0 || rule==now; }
+bool matches(const Rule&x,const DateTime&t){ return x.enabled && field(x.sec,t.second()) && field(x.min,t.minute()) && field(x.hour,t.hour()) && field(x.day,dayOfYear(t)) && field(x.dow,t.dayOfTheWeek()+1) && field(x.dom,t.day()) && field(x.month,t.month()); }
+void runSchedules(){ static int last=-1; DateTime n=rtc.now(); int stamp=n.unixtime()/60; if(stamp==last)return; last=stamp; for(uint8_t r=0;r<16;r++){ bool change=false; for(uint8_t s=0;s<8;s++){if(matches(startRules[r][s],n)){setRelay(r,true);change=true;} if(matches(stopRules[r][s],n)){setRelay(r,false);change=true;}} (void)change; } }
+String checked(bool v){return v?" checked":"";}
+String ruleRow(uint8_t r,uint8_t s,bool start){ Rule &x=(start?startRules:stopRules)[r][s]; String p=String(start?'S':'P')+r+"_"+s; String h="<tr><td>"+String(s+1)+"</td>"; h+="<td><input type=checkbox name='e"+p+"'"+checked(x.enabled)+"></td>"; const char* labels[]={"sec","min","hour","day","dow","dom","month"}; uint8_t vals[]={x.sec,x.min,x.hour,x.day,x.dow,x.dom,x.month}; for(uint8_t i=0;i<7;i++) h+="<td><input name='"+p+labels[i]+"' type=number min=0 max="+String(i==0?59:i==1?59:i==2?23:i==3?366:i==4?7:i==5?31:12)+" value="+String(vals[i])+" ></td>"; return h+="</tr>"; }
+void page(){ String h="<!doctype html><meta name=viewport content='width=device-width,initial-scale=1'><title>16 Relay Scheduler</title><style>body{font:14px sans-serif;margin:12px;background:#f4f4f4}section{background:white;padding:10px;margin:10px 0;border-radius:8px;overflow:auto}table{border-collapse:collapse}td,th{border:1px solid #bbb;padding:3px}input{width:55px}button{padding:8px;margin:3px}</style><h1>16 Relay Controller</h1><p>AP: <b>RelayController</b> / relay-control. Zero means ANY. DOW: 1=Sun..7=Sat.</p><form method=post action=/save>"; for(uint8_t r=0;r<16;r++){h+="<section><h2>Relay "+String(r+1)+" <a href='/toggle?r="+String(r)+"'>"+(relayState[r]?"ON":"OFF")+"</a></h2><h3>START schedules</h3><table><tr><th>#</th><th>On</th><th>Sec</th><th>Min</th><th>Hour</th><th>Day/year</th><th>DOW</th><th>Day/month</th><th>Month</th></tr>";for(uint8_t s=0;s<8;s++)h+=ruleRow(r,s,true);h+="</table><h3>STOP schedules</h3><table><tr><th>#</th><th>On</th><th>Sec</th><th>Min</th><th>Hour</th><th>Day/year</th><th>DOW</th><th>Day/month</th><th>Month</th></tr>";for(uint8_t s=0;s<8;s++)h+=ruleRow(r,s,false);h+="</table></section>";} h+="<button type=submit>Save all schedules</button><button type=button onclick=location.href='/all?on=1'>ALL ON</button><button type=button onclick=location.href='/all?on=0'>ALL OFF</button></form>";server.send(200,"text/html",h);}
+uint8_t argVal(String n){ if(!server.hasArg(n))return 0; long v=server.arg(n).toInt(); return constrain(v,0,255); }
+void savePage(){ for(uint8_t r=0;r<16;r++)for(uint8_t s=0;s<8;s++)for(uint8_t k=0;k<2;k++){Rule &x=(k?stopRules:startRules)[r][s];String p=String(k?'P':'S')+r+"_"+s;x.enabled=server.hasArg("e"+p);x.sec=argVal(p+"sec");x.min=argVal(p+"min");x.hour=argVal(p+"hour");x.day=argVal(p+"day");x.dow=argVal(p+"dow");x.dom=argVal(p+"dom");x.month=argVal(p+"month");}saveRules();server.sendHeader("Location","/");server.send(303);}
+void setup(){Serial.begin(115200);for(uint8_t i=0;i<16;i++){pinMode(pins[i],OUTPUT);digitalWrite(pins[i],INACTIVE);}Wire.begin(SDA_PIN,SCL_PIN);if(!rtc.begin()){Serial.println("RTC missing; schedules disabled");}else if(rtc.lostPower())rtc.adjust(DateTime(F(__DATE__),F(__TIME__)));loadRules();WiFi.mode(WIFI_AP);WiFi.softAP(AP_SSID,AP_PASS);server.on("/",HTTP_GET,page);server.on("/save",HTTP_POST,savePage);server.on("/toggle",HTTP_GET,[]{setRelay(server.arg("r").toInt(),!relayState[server.arg("r").toInt()]);server.sendHeader("Location","/");server.send(303);});server.on("/all",HTTP_GET,[]{setAll(server.arg("on").toInt());server.sendHeader("Location","/");server.send(303);});server.begin();Serial.print("Open http://");Serial.println(WiFi.softAPIP());}
+void loop(){server.handleClient();if(rtc.begin())runSchedules();delay(2);}
