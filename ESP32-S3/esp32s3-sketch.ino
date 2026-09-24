@@ -31,7 +31,7 @@ Preferences preferences;
 //  Year 2106+ Support
 // =============================================================================
 #define MIN_UNIX_TIME_64 1577836800ULL
-#define MAX_UNIX_TIME_64 4294967295ULL
+#define MAX_UNIX_TIME_64 4294967295ULL 
 #define VALID_UNIX_TIME_64(epoch) ((epoch) >= MIN_UNIX_TIME_64 && (epoch) <= MAX_UNIX_TIME_64)
 
 // =============================================================================
@@ -2007,7 +2007,7 @@ const char system_html[] PROGMEM = R"raw(<!DOCTYPE html>
 
 <div class="card fcrd">
 <p style="font-weight:700;margin-bottom:12px">Device Control</p>
-<div style="display:flex;gap:8px;flex-wrap:wrap">
+<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
 <button class="btn bwarn" onclick="rst()" style="padding:9px 18px;border-radius:6px;font-size:13px;font-weight:600">&#x1F504; Verify Services</button>
 <button class="btn bdanger" onclick="fct()" style="padding:9px 18px;border-radius:6px;font-size:13px;font-weight:600">&#x26A0; Factory Reset</button>
 </div>
@@ -3159,18 +3159,6 @@ void handleSaveRelay() {
         }
         s++;
     }
-    for (; s < 8; s++) {
-        relayConfigs[relay].schedule.startHour[s]   = 0;
-        relayConfigs[relay].schedule.startMinute[s] = 0;
-        relayConfigs[relay].schedule.startSecond[s] = 0;
-        relayConfigs[relay].schedule.stopHour[s]    = 0;
-        relayConfigs[relay].schedule.stopMinute[s]  = 0;
-        relayConfigs[relay].schedule.stopSecond[s]  = 0;
-        relayConfigs[relay].schedule.enabled[s]     = false;
-        relayConfigs[relay].schedule.days[s]        = DAY_ALL;
-        relayConfigs[relay].schedule.monthDays[s]   = 0x7FFFFFFFUL;
-        relayConfigs[relay].schedule.monthMask[s]   = MONTH_ALL;
-    }
     saveConfiguration();
     updateScheduleCache();
     server.send(200, "application/json", "{\"success\":true}");
@@ -3217,7 +3205,7 @@ void handleGetTime() {
     if (timeSource == TIME_SOURCE_NTP) timeSourceStr = "ntp";
     else if (timeSource == TIME_SOURCE_BROWSER) timeSourceStr = "browser";
     else if (timeSource == TIME_SOURCE_RTC) timeSourceStr = "rtc";
-    unsigned long rtcSyncAge = (lastRTCDSync > 0) ? (millis() - lastRTCDSync) / 1000UL : 0xFFFFFFFF;
+    unsigned long rtcSyncAge = (lastRTCDSync > 0) ? (millis() - lastRTCDSync) / 1000UL : 0;
     String resp = "{\"time\":\"" + ts + "\",\"wifi\":" +
                   String(wifiConnected ? "true" : "false") + ",\"ntp\":" +
                   String((timeSource == TIME_SOURCE_NTP) ? "true" : "false") +
