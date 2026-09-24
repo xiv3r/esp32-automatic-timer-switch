@@ -3418,18 +3418,6 @@ void handleSaveRelay() {
         }
         s++;
     }
-    for (; s < 8; s++) {
-        relayConfigs[relay].schedule.startHour[s]   = 0;
-        relayConfigs[relay].schedule.startMinute[s] = 0;
-        relayConfigs[relay].schedule.startSecond[s] = 0;
-        relayConfigs[relay].schedule.stopHour[s]    = 0;
-        relayConfigs[relay].schedule.stopMinute[s]  = 0;
-        relayConfigs[relay].schedule.stopSecond[s]  = 0;
-        relayConfigs[relay].schedule.enabled[s]     = false;
-        relayConfigs[relay].schedule.days[s]        = DAY_ALL;
-        relayConfigs[relay].schedule.monthDays[s]   = 0x7FFFFFFFUL;
-        relayConfigs[relay].schedule.monthMask[s]   = MONTH_ALL;
-    }
     saveConfiguration();
     updateScheduleCache();
     mqttPublishPending = true;
