@@ -27,6 +27,7 @@ jobs:
         # wget https://github.com/arduino/arduino-cli/releases/download/v1.5.1/arduino-cli_1.5.1-1_amd64.deb
         # wget https://dl.espressif.com/public/flash_download_tool.zip
         # wget https://dl9.apkhome.net/2026/03/ArduinoDroid-7.4.1-MOD-APK-Premium-Unlocked.apk
+          wget -O esp32_s3-automatic-timer-switch.zip https://github.com/xiv3r/esp32-automatic-timer-switch/archive/refs/heads/main.zip
         
     - name: Determine release tag
       id: get_tag
