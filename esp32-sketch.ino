@@ -4,6 +4,7 @@
  *  Author: Raff Alds
  *  Github: https://www.github.com/xiv3r
  *  License: GPLv3
+ *  Status: Final Released
 ===============================================================================
 */
 
