@@ -4,7 +4,6 @@
  *  Author: Raff Alds
  *  Github: https://www.github.com/xiv3r
  *  License: GPLv3
- *  Status: Final Released
 ===============================================================================
 */
 
@@ -1331,6 +1330,9 @@ function save(ri){
 load();
 </script></body></html>)raw";
 
+// =============================================================================
+//  WIFI PAGE
+// =============================================================================
 const char wifi_html[] PROGMEM = R"raw(<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>WiFi</title>
@@ -1567,6 +1569,9 @@ function saveWiFi(){
 loadWiFiStatus();
 </script></body></html>)raw";
 
+// =============================================================================
+//  NTP PAGE
+// =============================================================================
 const char ntp_html[] PROGMEM = R"raw(<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Time</title>
@@ -1691,6 +1696,9 @@ function syncFromBrowser(){
 }
 </script></body></html>)raw";
 
+// =============================================================================
+//  AP PAGE
+// =============================================================================
 const char ap_html[] PROGMEM = R"raw(<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AP</title>
@@ -1758,6 +1766,9 @@ function save(){
 }
 </script></body></html>)raw";
 
+// =============================================================================
+//  GPIO PAGE
+// =============================================================================
 const char gpio_html[] PROGMEM = R"raw(<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>GPIO</title>
@@ -1965,6 +1976,9 @@ function resetDefaults() {
 loadGPIO();
 </script></body></html>)raw";
 
+// =============================================================================
+//  SYSTEM PAGE
+// =============================================================================
 const char system_html[] PROGMEM = R"raw(<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>System</title>
