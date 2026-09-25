@@ -2,7 +2,7 @@ Compile the .ino file based on the instructions.
 Do not save the file to workspace except the 4 generated .bin firmware.
 
 # Download the sketch.ino file
-wget -O sketch.ino https://github.com/xiv3r/esp32-automatic-timer-switch
+wget -O esp32-sketch.ino https://raw.githubusercontent.com/xiv3r/esp32-automatic-timer-switch/refs/heads/main/esp32-sketch.ino
 
 # Download the arduino-cli
 sudo apt update
