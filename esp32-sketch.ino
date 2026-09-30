@@ -275,12 +275,13 @@ bool          mdnsRestartScheduled  = false;
 // =============================================================================
 //  Schedule Engine
 // =============================================================================
-static uint8_t  cachedTodayBit = 0;
 static bool     scheduleActiveCache[MAX_RELAYS] = {false};
 static unsigned long lastScheduleCacheUpdate = 0;
-static const unsigned long SCHEDULE_CACHE_INTERVAL = 1000UL;
+static const unsigned long SCHEDULE_CACHE_INTERVAL = 250UL;
 static unsigned long lastScheduleProcess = 0;
 static bool lastRelayOutputs[MAX_RELAYS] = {false};
+static unsigned long lastStateChangeGlobal[MAX_RELAYS] = {0};
+static bool lastDebouncedStateGlobal[MAX_RELAYS] = {false};
 
 // =============================================================================
 //  Memory Management
@@ -300,7 +301,7 @@ public:
     bool liveReconfigureAP();
     bool recoverRTC();
     void smartRecovery();
-    void verifyRelayStates();
+    void verifyRelayStates(bool force = false);
     void performTargetedRecovery();
     void restartAPIfNeeded(bool forceRestart = false);
 private:
@@ -373,7 +374,6 @@ inline DateTime uint64ToRtcDateTime(uint64_t t64) {
 
 // =============================================================================
 //  64-bit GMT Time Implementation
-//
 // =============================================================================
 struct tm* gmtime64(uint64_t* timep) {
     static struct tm tm;
@@ -397,7 +397,7 @@ struct tm* gmtime64(uint64_t* timep) {
     tm.tm_min = rem % 60ULL;
     tm.tm_hour = rem / 60ULL;
     uint64_t z = days + 719468ULL;
-    uint64_t era = (z >= 0 ? z : z - 146096ULL) / 146097ULL;
+    uint64_t era = z / 146097ULL;
     uint64_t doe = z - era * 146097ULL;
     uint64_t yoe = (doe - doe / 1460ULL + doe / 36524ULL - doe / 146096ULL) / 365ULL;
     uint64_t y = yoe + era * 400ULL;
@@ -423,7 +423,10 @@ struct tm* gmtime64(uint64_t* timep) {
 //  Get Local Epoch
 // =============================================================================
 inline uint64_t getLocalEpoch(uint64_t utcEpoch) {
-    return utcEpoch + (uint64_t)(sysConfig.gmt_offset + sysConfig.daylight_offset);
+    int64_t offset = (int64_t)sysConfig.gmt_offset + (int64_t)sysConfig.daylight_offset;
+    if (offset > 50400) offset = 50400;
+    if (offset < -50400) offset = -50400;
+    return utcEpoch + (uint64_t)offset;
 }
 
 // =============================================================================
@@ -487,7 +490,8 @@ void setWiFiStationEnabled(bool enabled) {
     extConfig.sta_enabled = enabled ? 1 : 0;
     saveExtConfig();
     if (!enabled) {
-        WiFi.disconnect(true);
+        ntpUDP.stop();
+        WiFi.disconnect(false, false);
         wifiConnected = false;
         wifiConnecting = false;
         wifiPausedForScan = false;
@@ -591,11 +595,14 @@ void performRTCReabase() {
         } else {
             elapsedMicros = (0xFFFFFFFF - rtcMicrosAtLastSync) + currentMicros + 1;
         }
+        float driftSafe = driftCompensation;
+        if (driftSafe < 0.9f) driftSafe = 0.9f;
+        if (driftSafe > 1.1f) driftSafe = 1.1f;
         double elapsedSeconds = (double)elapsedMicros / 1000000.0;
-        double adjustedSeconds = elapsedSeconds * (double)driftCompensation;
+        double adjustedSeconds = elapsedSeconds * (double)driftSafe;
         uint64_t secondsToAdd = (uint64_t)adjustedSeconds;
         internalEpoch += secondsToAdd;
-        unsigned long committedMicros = (unsigned long)(((uint64_t)((double)secondsToAdd * 1000000.0 / (double)driftCompensation)) & 0xFFFFFFFFULL);
+        unsigned long committedMicros = (unsigned long)(((uint64_t)((double)secondsToAdd * 1000000.0 / (double)driftSafe)) & 0xFFFFFFFFULL);
         rtcMicrosAtLastSync = (rtcMicrosAtLastSync + committedMicros) & 0xFFFFFFFFUL;
         lastRTCRebase = currentMillis;
         return;
@@ -619,8 +626,11 @@ uint64_t getCurrentEpoch() {
             performRTCReabase();
             return internalEpoch;
         }
+        float driftSafe = driftCompensation;
+        if (driftSafe < 0.9f) driftSafe = 0.9f;
+        if (driftSafe > 1.1f) driftSafe = 1.1f;
         double elapsedSeconds = (double)elapsedMicros / 1000000.0;
-        double adjustedSeconds = elapsedSeconds * (double)driftCompensation;
+        double adjustedSeconds = elapsedSeconds * (double)driftSafe;
         uint64_t secondsToAdd = (uint64_t)adjustedSeconds; 
         uint64_t result = internalEpoch + secondsToAdd;
         return result;
@@ -650,6 +660,7 @@ void loadRTCState() {
         rtcMicrosAtLastSync      = micros();
         lastRTCRebase            = millis();
         rtcInitialized           = true;
+        timeSource               = TIME_SOURCE_RTC;
     }
 }
 
@@ -664,7 +675,9 @@ void autoSaveInternalRTC() {
         lastInternalRTCSave = now;
         performRTCReabase();
         sysConfig.last_rtc_epoch = internalEpoch;
-        saveConfiguration();
+        preferences.begin(NVS_NAMESPACE, false);
+        preferences.putBytes("sysConfig", &sysConfig, sizeof(SystemConfig));
+        preferences.end();
     }
 }
 
@@ -683,7 +696,12 @@ bool loadRTCFromDS3231() {
                 lastRTCRebase = millis();
                 rtcInitialized = true;
                 timeSource = TIME_SOURCE_RTC;
-                saveRTCState();
+                if (sysConfig.last_rtc_epoch == 0 ||
+                    (rtcEpoch > sysConfig.last_rtc_epoch
+                        ? rtcEpoch - sysConfig.last_rtc_epoch > 60
+                        : sysConfig.last_rtc_epoch - rtcEpoch > 60)) {
+                    saveRTCState();
+                }
                 return true;
             }
         }
@@ -698,7 +716,7 @@ void pauseWiFiForScan() {
     if (wifiConnecting && !wifiConnected && !wifiPausedForScan && extConfig.sta_enabled) {
         wifiPausedForScan = true;
         wifiPauseUntil = millis() + WIFI_PAUSE_DURATION;
-        WiFi.disconnect(true);
+        WiFi.disconnect(false, false);
         delay(100);
         wifiConnecting = false;
         lastScanAttempt = millis();
@@ -751,17 +769,20 @@ bool SelfHealingSystem::liveReconfigureMDNS() {
 }
 
 bool SelfHealingSystem::liveReconfigureAP() {
-    if (WiFi.softAPIP().toString() == "0.0.0.0") {
+    if (WiFi.softAPIP() == IPAddress(0, 0, 0, 0)) {
         uint8_t ch = extConfig.ap_channel;
         if (ch < 1 || ch > 13) ch = 6;
         uint8_t hidden = extConfig.ap_hidden ? 1 : 0;
+        bool ok;
         if (strlen(sysConfig.ap_password) > 0) {
-            WiFi.softAP(sysConfig.ap_ssid, sysConfig.ap_password, ch, hidden);
+            ok = WiFi.softAP(sysConfig.ap_ssid, sysConfig.ap_password, ch, hidden);
         } else {
-            WiFi.softAP(sysConfig.ap_ssid, NULL, ch, hidden);
+            ok = WiFi.softAP(sysConfig.ap_ssid, NULL, ch, hidden);
         }
-        liveReconfigureMDNS();
-        return true;
+        if (ok) {
+            liveReconfigureMDNS();
+        }
+        return ok;
     }
     return true;
 }
@@ -832,15 +853,16 @@ void SelfHealingSystem::performTargetedRecovery() {
     liveReconfigureAP();
     delay(50);
     recoverRTC();
-    verifyRelayStates();
+    verifyRelayStates(true);
     health.wifiFailures = 0;
 }
 
-void SelfHealingSystem::verifyRelayStates() {
+void SelfHealingSystem::verifyRelayStates(bool force) {
     static unsigned long lastVerification = 0;
     unsigned long now = millis();
-    if (!timeHasElapsed(now, lastVerification, 30000)) return;
+    if (!force && !timeHasElapsed(now, lastVerification, 30000)) return;
     lastVerification = now;
+    updateScheduleCache();
     for (int i = 0; i < gpioConfig.count; i++) {
         int pin = getRelayPin(i);
         if (pin < 0) continue;
@@ -960,10 +982,10 @@ main{max-width:1200px;margin:0 auto;padding:16px}
 .bsync{background:#FB8C00;color:#fff}.bdanger{background:#B71C1C;color:#fff}.bwarn{background:#F9A825;color:#212121}
 .bscan{background:#0288D1;color:#fff}
 .slist{display:flex;flex-direction:column;gap:6px;margin-bottom:8px;max-height:500px;overflow-y:auto;padding-right:2px}
-.si{border:1px solid #E3E8EF;border-radius:7px;padding:9px}
+.si{border:1px solid #E3E8EF;border-radius:7px;padding:9px;min-height:auto;height:auto;overflow:visible}
 .si.act{border-color:#90CAF9;background:#F0F7FF}
-.shdr{display:flex;align-items:center;gap:7px;margin-bottom:7px;font-size:11px;font-weight:700;color:#607D8B;text-transform:uppercase}
-.shdr label{display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;font-weight:700;color:#1A1A2E;text-transform:none}
+.shdr{display:flex;align-items:flex-start;gap:7px;margin-bottom:7px;font-size:11px;font-weight:700;color:#607D8B;text-transform:uppercase;flex-wrap:wrap}
+.shdr label{display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;font-weight:700;color:#1A1A2E;text-transform:none;white-space:nowrap}
 .trow{display:flex;align-items:center;gap:8px;font-size:12px;margin-top:5px}
 .trow .l{color:#90A4AE;font-weight:600;width:32px;flex-shrink:0}
 .days{display:flex;gap:3px;margin-top:5px;flex-wrap:wrap}
@@ -979,7 +1001,7 @@ main{max-width:1200px;margin:0 auto;padding:16px}
 .month:hover{border-color:#90CAF9;background:#E3F2FD}
 .month.on{background:#1565C0;color:#fff;border-color:#1565C0}
 .sched-section{margin-top:4px;font-size:10px;font-weight:600;color:#90A4AE;text-transform:uppercase;margin-bottom:2px}
-.night{font-size:10px;color:#0D47A1;background:#E3F2FD;padding:2px 6px;border-radius:4px;margin-left:auto}
+.night{font-size:10px;color:#0D47A1;background:#E3F2FD;padding:2px 6px;border-radius:4px;margin-left:auto;white-space:normal;word-break:break-word;max-width:100%;line-height:1.4;flex:1 1 auto;text-align:right}
 .night.always{background:#E8F5E9;color:#2E7D32}
 input[type=time]{flex:1;padding:5px 8px;border:1px solid #CFD8DC;border-radius:5px;font-size:13px;font-family:monospace;background:#FAFAFA;cursor:pointer;min-width:0}
 input[type=time]:focus{outline:none;border-color:#1565C0;box-shadow:0 0 0 3px rgba(21,101,192,.15);background:#fff}
@@ -1048,6 +1070,7 @@ const NS=8;
 let relays=[],busy=false;
 let editingRelay = -1;
 let editingInput = null;
+let editSuppressBlur = false;
 
 function escapeHtml(text) {
   const div = document.createElement('div');
@@ -1063,10 +1086,7 @@ function load(){
     d.forEach(r=>{
       if(!Array.isArray(r.schedules))r.schedules=[];
       r.schedules=r.schedules.filter(s=>s&&typeof s==='object');
-      r.schedules.forEach(s=>{
-        if(s.monthDays === 0x7FFFFFFF || s.monthDays === 0xFFFFFFFF) s.monthDays = 0;
-      });
-      while(r.schedules.length<NS)r.schedules.push({startHour:0,startMinute:0,startSecond:0,stopHour:0,stopMinute:0,stopSecond:0,enabled:false,days:0x7F,monthDays:0,monthMask:0x0FFF});
+      while(r.schedules.length<NS)r.schedules.push({startHour:0,startMinute:0,startSecond:0,stopHour:0,stopMinute:0,stopSecond:0,enabled:false,days:0x7F,monthDays:0x7FFFFFFF,monthMask:0x0FFF});
     });
     relays=d;render();
   }).catch(()=>toast('Load error',false));
@@ -1083,11 +1103,11 @@ function dayMaskToStr(d){
 }
 
 function monthDayMaskToStr(md){
-  if(md===0) return '';
-  if(md===0xFFFFFFFF) return 'All month days';
-  if(md===0x7FFFFFFF) return '';
+  const v = (md === undefined || md === null) ? 0x7FFFFFFF : (md & 0x7FFFFFFF);
+  if(v === 0) return 'None';
+  if(v === 0x7FFFFFFF) return 'All month days';
   let s='';
-  for(let i=0;i<31;i++) if(md&(1<<i)) s+=(i+1)+',';
+  for(let i=0;i<31;i++) if(v&(1<<i)) s+=(i+1)+',';
   return s.replace(/,$/,'')||'None';
 }
 
@@ -1104,11 +1124,13 @@ function nightBadge(sc){
   const a=sc.startHour*3600+sc.startMinute*60+sc.startSecond;
   const b=sc.stopHour*3600+sc.stopMinute*60+sc.stopSecond;
   const ds=dayMaskToStr(sc.days === undefined ? 0x7F : sc.days);
-  const ms=monthDayMaskToStr(sc.monthDays === undefined ? 0 : sc.monthDays);
-  const mm=monthMaskToStr(sc.monthMask === undefined ? 0x0FFF : sc.monthMask);  
-  let info=ds;
-  if(ms) info+=' | Days:'+ms;
-  if(mm && mm!=='All months') info+=' | Months:'+mm;  
+  const ms=monthDayMaskToStr(sc.monthDays === undefined ? 0x7FFFFFFF : sc.monthDays);
+  const mm=monthMaskToStr(sc.monthMask === undefined ? 0x0FFF : sc.monthMask);
+  let parts=[];
+  if(ds) parts.push(ds);
+  if(ms && ms!=='All month days') parts.push('Days: '+ms);
+  if(mm && mm!=='All months') parts.push('Months: '+mm);
+  let info=parts.join(' | ');
   if(a===b)return'<span class="night always">&#x25CF; Always ON ('+info+')</span>';
   if(a>b) return'<span class="night">&#x1F319; Overnight ('+info+')</span>';
   return'<span class="night">&#x1F319; '+info+'</span>';
@@ -1129,13 +1151,21 @@ function startEditName(relayIdx) {
   input.style.cssText = 'font-size:15px;font-weight:700;padding:2px 6px;border:1px solid #1565C0;border-radius:5px;width:120px;background:#fff;color:#1A1A2E;';
   input.id = 'edit_' + relayIdx;
   
-  input.onblur = () => saveNameEdit(relayIdx, input.value);
+  input.onblur = () => {
+    if (editSuppressBlur) return;
+    saveNameEdit(relayIdx, input.value);
+  };
   input.onkeydown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
+      editSuppressBlur = true;
       saveNameEdit(relayIdx, input.value);
+      editSuppressBlur = false;
     } else if (e.key === 'Escape') {
+      e.preventDefault();
+      editSuppressBlur = true;
       cancelEdit();
+      editSuppressBlur = false;
     }
   };
   
@@ -1152,7 +1182,9 @@ function cancelEdit() {
   if (editingRelay !== -1) {
     const nameSpan = document.getElementById('name_' + editingRelay);
     if (nameSpan) nameSpan.style.display = '';
+    editSuppressBlur = true;
     if (editingInput) editingInput.remove();
+    editSuppressBlur = false;
     editingRelay = -1;
     editingInput = null;
   }
@@ -1171,7 +1203,9 @@ function saveNameEdit(relayIdx, newName) {
     nameSpan.textContent = newName;
     nameSpan.style.display = '';
   }
+  editSuppressBlur = true;
   if (editingInput) editingInput.remove();
+  editSuppressBlur = false;
   editingRelay = -1;
   editingInput = null;
   
@@ -1216,8 +1250,8 @@ function render(){
     for(let s=0;s<NS;s++){
       const sc2=r.schedules[s]||{startHour:0,startMinute:0,startSecond:0,stopHour:0,stopMinute:0,stopSecond:0,enabled:false,days:0x7F,monthDays:0,monthMask:0x0FFF};
       const dayBits = (sc2.days === undefined || sc2.days === null) ? 0x7F : sc2.days;
-      const rawMonthDayBits = (sc2.monthDays === undefined || sc2.monthDays === null) ? 0 : sc2.monthDays;
-      const monthDayBits = (rawMonthDayBits === 0x7FFFFFFF || rawMonthDayBits === 0xFFFFFFFF) ? 0 : rawMonthDayBits;
+      const rawMonthDayBits = (sc2.monthDays === undefined || sc2.monthDays === null) ? 0x7FFFFFFF : sc2.monthDays;
+      const monthDayBits = rawMonthDayBits & 0x7FFFFFFF;
       const monthMask = (sc2.monthMask === undefined || sc2.monthMask === null) ? 0x0FFF : sc2.monthMask;  
       html+=`<div class="si${sc2.enabled?' act':''}" id="si_${i}_${s}">
 <div class="shdr">
@@ -1237,14 +1271,14 @@ function render(){
         html+=`<div class="day${(dayBits&mask)?' on':''}" onclick="toggleDay(${i},${s},${d})">${D[d]}</div>`;
       }
       html+=`</div>
-<div class="sched-section">Days of Month <small style="text-transform:none;color:#90A4AE;font-weight:400">(Empty = All days)</small></div>
+<div class="sched-section">Days of Month</div>
 <div class="mdays" id="mday_${i}_${s}">`;
       for(let d=0;d<31;d++){
         const mask = 1<<d;
         html+=`<div class="mday${(monthDayBits&mask)?' on':''}" onclick="toggleMonthDay(${i},${s},${d})" title="Day ${d+1}">${d+1}</div>`;
       }
       html+=`</div>
-<div class="sched-section">Months of Year <small style="text-transform:none;color:#90A4AE;font-weight:400">(All selected = All months)</small></div>
+<div class="sched-section">Months of Year</div>
 <div class="months" id="mon_${i}_${s}">`;
       for(let m=0;m<12;m++){
         const mask = 1<<m;
@@ -1274,8 +1308,9 @@ function toggleDay(ri,si,dayIdx){
 
 function toggleMonthDay(ri,si,dayIdx){
   const mask = 1<<dayIdx;
-  let cur = relays[ri].schedules[si].monthDays || 0;
-  if(cur === 0x7FFFFFFF || cur === 0xFFFFFFFF) cur = 0;
+  let cur = relays[ri].schedules[si].monthDays;
+  if(cur === undefined || cur === null) cur = 0x7FFFFFFF;
+  cur = cur & 0x7FFFFFFF;
   cur ^= mask;
   relays[ri].schedules[si].monthDays = cur;
   const mdayEl = document.getElementById('mday_'+ri+'_'+si).children[dayIdx];
@@ -1708,7 +1743,7 @@ const char ap_html[] PROGMEM = R"raw(<!DOCTYPE html>
 <a href="/">Relays</a>
 <a href="/wifi">WiFi</a>
 <a href="/ntp">Time</a>
-<a href="/ap">AP</a>
+<a href="/ap" class="cur">AP</a>
 <a href="/gpio">GPIO</a>
 <a href="/system">System</a>
 </nav>
@@ -1754,12 +1789,13 @@ fetch('/api/ap').then(r=>r.json()).then(d=>{
 function save(){
   const pw=document.getElementById('pw').value;
   if(pw.length>0&&pw.length<8){toast('Password must be 8+ chars or blank',false);return;}
-  fetch('/api/ap',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+const body = {
     ap_ssid:document.getElementById('ssid').value,
-    ap_password:pw,
     ap_channel:parseInt(document.getElementById('ch').value),
     ap_hidden:document.getElementById('hidden').value==='1'
-  })}).then(r=>r.json()).then(d=>{
+};
+if (pw.length > 0) body.ap_password = pw;
+fetch('/api/ap',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json()).then(d=>{
     if(d.success){toast('Settings saved!');if(d.restarted)toast('AP restarted - reconnect to new network');setTimeout(()=>location.reload(),4000);}
     else toast('Failed: '+d.error,false);
   }).catch(()=>toast('Error',false));
@@ -1830,7 +1866,7 @@ const char gpio_html[] PROGMEM = R"raw(<!DOCTYPE html>
 function toast(m,ok=true){const t=document.getElementById('toast');t.textContent=m;t.className='show '+(ok?'ok':'er');clearTimeout(t._t);t._t=setTimeout(()=>t.className='',3000);}
 function tick(){fetch('/api/time').then(r=>r.json()).then(d=>{document.getElementById('clk').textContent=d.time||'--:--:--';const w=document.querySelector('.wd'),t=document.querySelector('.td');if(w)w.className='dot '+(d.wifi?'g':'r');if(t){let tc='y';if(d.timeSource==='ntp')tc='g';else if(d.timeSource==='browser')tc='b';else if(d.timeSource==='rtc')tc='b';else tc='y';t.className='dot '+tc;}}).catch(()=>{});}
 setInterval(tick,1000);tick();
-// change gpio pins
+// change gpio
 const DEFAULT_PINS = [23,32,33,25,26,27,14,13,1,3,19,18,5,4,2,15];
 let gpioData = null;
 function saveGlobalMode() {
@@ -1849,60 +1885,65 @@ function saveGlobalMode() {
     }).catch(()=>toast('Error', false));
 }
 
+function renderGPIOPins(d) {
+    const globalMode = parseInt(document.getElementById('globalMode').value);
+    const isGlobalMode = (globalMode === 1 || globalMode === 2);
+    const globalModeText = (globalMode === 1) ? 'GLOBAL ACTIVE LOW' : (globalMode === 2) ? 'GLOBAL ACTIVE HIGH' : null;
+    
+    let pinsHtml = '';
+    if(isGlobalMode) {
+        pinsHtml = `<div style="background:#FFF3E0;padding:10px;border-radius:7px;margin-bottom:12px;border-left:4px solid #F9A825">
+            <strong style="color:#E65100">⚠️ Global Mode Active:</strong> ${globalModeText}<br>
+            <small style="color:#BF360C">Individual active level settings are currently overridden. Switch to "Per-Relay Configuration" to use individual settings.</small>
+        </div>`;
+    }
+    
+    for(let i=0; i<d.count; i++) {
+        const activeLow = d.activeLow ? d.activeLow[i] : true;
+        pinsHtml += `<div style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #E3E8EF;border-radius:7px;margin-bottom:6px;background:#FAFAFA">
+            <span style="font-weight:700;min-width:60px">Relay ${i+1}</span>
+            <span style="flex:1">GPIO <strong>${d.pins[i]}</strong></span>
+            <span style="flex:1;font-size:12px">Active: <strong>${activeLow ? 'LOW' : 'HIGH'}</strong></span>
+            <button class="btn ${activeLow ? 'bon-b' : 'boff-b'}" 
+                onclick="toggleActiveLow(${i})" 
+                style="padding:5px 10px;font-size:11px" 
+                title="Toggle active level"
+                ${isGlobalMode ? 'disabled' : ''}>
+                ${activeLow ? 'Set HIGH' : 'Set LOW'}
+            </button>
+            <button class="btn boff-b" onclick="deletePin(${i})" style="padding:5px 10px;font-size:11px" title="Remove this relay">&#x1F5D1; Remove</button>
+        </div>`;
+    }
+    if(d.count === 0) pinsHtml += '<div style="color:#90A4AE;text-align:center;padding:20px">No relays configured. Add some using the dropdown above.</div>';
+    if(d.count >= 16) pinsHtml += '<div style="color:#E65100;text-align:center;padding:10px;font-size:12px">Maximum 16 relays reached.</div>';
+    document.getElementById('pins').innerHTML = pinsHtml;
+    
+    const select = document.getElementById('newPin');
+    select.innerHTML = '<option value="">Select GPIO...</option>';
+    const usedPins = new Set(d.pins.slice(0, d.count));
+    d.availablePins.forEach(pin => {
+        if(!usedPins.has(pin)) {
+            select.innerHTML += `<option value="${pin}">GPIO ${pin}</option>`;
+        }
+    });
+    if(select.options.length === 1) {
+        select.innerHTML += '<option value="" disabled>All available pins in use</option>';
+    }
+}
+
 function loadGPIO() {
     fetch('/api/gpio').then(r=>r.json()).then(d=>{
         gpioData = d;
         document.getElementById('relayCount').textContent = d.count;
         
         fetch('/api/gpio/global-mode').then(r=>r.json()).then(data=>{
-    if(data.mode !== undefined) {
-        document.getElementById('globalMode').value = data.mode;
-    }
-       }).catch(()=>{});
-        
-        let pinsHtml = '';
-        const globalMode = parseInt(document.getElementById('globalMode').value);
-        const isGlobalMode = (globalMode === 1 || globalMode === 2);
-        const globalModeText = (globalMode === 1) ? 'GLOBAL ACTIVE LOW' : (globalMode === 2) ? 'GLOBAL ACTIVE HIGH' : null;
-        
-        if(isGlobalMode) {
-            pinsHtml = `<div style="background:#FFF3E0;padding:10px;border-radius:7px;margin-bottom:12px;border-left:4px solid #F9A825">
-                <strong style="color:#E65100">⚠️ Global Mode Active:</strong> ${globalModeText}<br>
-                <small style="color:#BF360C">Individual active level settings are currently overridden. Switch to "Per-Relay Configuration" to use individual settings.</small>
-            </div>`;
-        }
-        
-        for(let i=0; i<d.count; i++) {
-            const activeLow = d.activeLow ? d.activeLow[i] : true;
-            pinsHtml += `<div style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #E3E8EF;border-radius:7px;margin-bottom:6px;background:#FAFAFA">
-                <span style="font-weight:700;min-width:60px">Relay ${i+1}</span>
-                <span style="flex:1">GPIO <strong>${d.pins[i]}</strong></span>
-                <span style="flex:1;font-size:12px">Active: <strong>${activeLow ? 'LOW' : 'HIGH'}</strong></span>
-                <button class="btn ${activeLow ? 'bon-b' : 'boff-b'}" 
-                    onclick="toggleActiveLow(${i})" 
-                    style="padding:5px 10px;font-size:11px" 
-                    title="Toggle active level"
-                    ${isGlobalMode ? 'disabled' : ''}>
-                    ${activeLow ? 'Set HIGH' : 'Set LOW'}
-                </button>
-                <button class="btn boff-b" onclick="deletePin(${i})" style="padding:5px 10px;font-size:11px" title="Remove this relay">&#x1F5D1; Remove</button>
-            </div>`;
-        }
-        if(d.count === 0) pinsHtml += '<div style="color:#90A4AE;text-align:center;padding:20px">No relays configured. Add some using the dropdown above.</div>';
-        if(d.count >= 16) pinsHtml += '<div style="color:#E65100;text-align:center;padding:10px;font-size:12px">Maximum 16 relays reached.</div>';
-        document.getElementById('pins').innerHTML = pinsHtml;
-        
-        const select = document.getElementById('newPin');
-        select.innerHTML = '<option value="">Select GPIO...</option>';
-        const usedPins = new Set(d.pins.slice(0, d.count));
-        d.availablePins.forEach(pin => {
-            if(!usedPins.has(pin)) {
-                select.innerHTML += `<option value="${pin}">GPIO ${pin}</option>`;
+            if(data.mode !== undefined) {
+                document.getElementById('globalMode').value = data.mode;
             }
+            renderGPIOPins(d);
+        }).catch(()=>{
+            renderGPIOPins(d);
         });
-        if(select.options.length === 1) {
-            select.innerHTML += '<option value="" disabled>All available pins in use</option>';
-        }
     }).catch(()=>toast('Error loading GPIO config',false));
 }
 
@@ -2120,16 +2161,22 @@ function fct(){
 //  BOOT BUTTON FACTORY RESET
 // =============================================================================
 void checkBootButton() {
-    bool buttonState = !digitalRead(BOOT_BUTTON_PIN);
-    if (buttonState && !bootButtonPressed) {
-        bootButtonPressed = true;
-        bootButtonPressStart = millis();
-    }
-    else if (!buttonState && bootButtonPressed) {
-        bootButtonPressed = false;
+    static bool lastStableState = false;
+    static unsigned long lastDebounceTime = 0;
+    bool rawState = !digitalRead(BOOT_BUTTON_PIN);
+    unsigned long now = millis();
+    if (rawState != lastStableState && timeHasElapsed(now, lastDebounceTime, 50)) {
+        lastDebounceTime = now;
+        lastStableState = rawState;
+        if (rawState && !bootButtonPressed) {
+            bootButtonPressed = true;
+            bootButtonPressStart = now;
+        } else if (!rawState && bootButtonPressed) {
+            bootButtonPressed = false;
+        }
     }
     if (bootButtonPressed && !factoryResetTriggered &&
-        (millis() - bootButtonPressStart >= FACTORY_RESET_HOLD)) {
+        timeHasElapsed(now, bootButtonPressStart, FACTORY_RESET_HOLD)) {
         factoryResetTriggered = true;
         preferences.begin(NVS_NAMESPACE, false);
         preferences.clear();
@@ -2146,8 +2193,26 @@ void loadGPIOConfig() {
     preferences.begin(NVS_NAMESPACE, true);
     size_t len = preferences.getBytes("gpioConfig", &gpioConfig, sizeof(GPIOPinConfig));
     preferences.end();
-    if (len != sizeof(GPIOPinConfig) || gpioConfig.magic != GPIO_CONFIG_MAGIC ||
-        gpioConfig.count == 0 || gpioConfig.count > MAX_RELAYS) {
+    bool valid = (len == sizeof(GPIOPinConfig)) &&
+                 (gpioConfig.magic == GPIO_CONFIG_MAGIC) &&
+                 (gpioConfig.count > 0) &&
+                 (gpioConfig.count <= MAX_RELAYS);
+    if (valid) {
+        // change gpio
+        static const uint8_t SAFE_PINS[] = {23, 32, 33, 25, 26, 27, 14, 13, 1, 3, 19, 18, 5, 4, 2, 15};
+        for (uint8_t i = 0; i < gpioConfig.count; i++) {
+            bool allowed = false;
+            for (uint8_t sp : SAFE_PINS) {
+                if (sp == gpioConfig.pins[i]) { allowed = true; break; }
+            }
+            if (!allowed) { valid = false; break; }
+            for (uint8_t j = i + 1; j < gpioConfig.count; j++) {
+                if (gpioConfig.pins[i] == gpioConfig.pins[j]) { valid = false; break; }
+            }
+            if (!valid) break;
+        }
+    }
+    if (!valid) {
         gpioConfig.count = 16;
         gpioConfig.magic = GPIO_CONFIG_MAGIC;
         memcpy(gpioConfig.pins, DEFAULT_RELAY_PINS, sizeof(uint8_t) * 16);
@@ -2229,6 +2294,13 @@ void processNTPResponse() {
     if (ntpAsyncStage != 1) return;
     int packetSize = ntpUDP.parsePacket();
     if (packetSize >= NTP_PACKET_SIZE) {
+        if (ntpUDP.remotePort() != NTP_PORT) {
+            uint8_t discard[128];
+            while (ntpUDP.available() > 0) {
+                ntpUDP.read(discard, sizeof(discard));
+            }
+            return;
+        }
         ntpUDP.read(ntpPacketBuffer, NTP_PACKET_SIZE);
         uint8_t mode = ntpPacketBuffer[0] & 0x07;
         uint8_t li = (ntpPacketBuffer[0] >> 6) & 0x03;
@@ -2319,6 +2391,9 @@ void tryNTPSync() {
         ntpAsyncStage = 0;
         return;
     }
+    if (ntpAsyncStage != 0 || ntpAsyncState == NTP_STATE_CONNECTING) {
+        return;
+    }
     unsigned long now = millis();
     if (!timeHasElapsed(now, lastNTPAttempt, NTP_RETRY_INTERVAL)) {
         return;
@@ -2352,8 +2427,21 @@ void handleBrowserTimeSync() {
             "{\"success\":false,\"error\":\"Invalid epoch time. Expected between 2020-01-01 and 2100-01-01.\"}");
         return;
     }
+    uint64_t currentEpoch = getCurrentEpoch();
+    if (currentEpoch >= MIN_UNIX_TIME_64) {
+        uint64_t diff = (browserUtcEpoch > currentEpoch)
+            ? (browserUtcEpoch - currentEpoch)
+            : (currentEpoch - browserUtcEpoch);
+        if (diff > 31536000ULL) {
+            server.send(400, "application/json",
+                "{\"success\":false,\"error\":\"Epoch differs too much from current time\"}");
+            return;
+        }
+    }
     syncInternalRTC(browserUtcEpoch, TIME_SOURCE_BROWSER);
-    lastNTPSync = 0;
+    if (ntpAsyncStage == 0 && ntpAsyncState != NTP_STATE_CONNECTING) {
+        lastNTPSync = 0;
+    }
     if (rtcPresent && rtcInitialized && internalEpoch > 0) {
         if (rtc.begin()) {
             DateTime dt = uint64ToRtcDateTime(internalEpoch);
@@ -2398,7 +2486,7 @@ void beginWiFiConnect() {
     if (wifiGiveUpUntil != 0 && !isTimeReached(millis(), wifiGiveUpUntil)) return;
     if (wifiConnecting) return;
     if (wifiPausedForScan) return;
-    WiFi.disconnect(true);
+    WiFi.disconnect(false, false);
     delay(100);
     wifiReconnectAttempts++;
     if (WiFi.getMode() != WIFI_AP_STA) {
@@ -2465,7 +2553,6 @@ void updateScheduleCache() {
     int currentMonthDay = ti->tm_mday;
     int currentMonth = ti->tm_mon;
     int currentSeconds = ti->tm_hour * 3600 + ti->tm_min * 60 + ti->tm_sec;
-    cachedTodayBit = (1 << currentWeekday);
     int cur = currentSeconds;
     for (int i = 0; i < gpioConfig.count; i++) {
         if (relayConfigs[i].manualOverride) {
@@ -2504,11 +2591,6 @@ void processRelaySchedules() {
     int currentMonth = ti->tm_mon;
     int currentSeconds = ti->tm_hour * 3600 + ti->tm_min * 60 + ti->tm_sec;
     int cur = currentSeconds;
-    uint8_t todayBit = (uint8_t)(1 << currentWeekday);
-    int monthDay = currentMonthDay;
-    int currentMonthVal = currentMonth;
-    static unsigned long lastStateChange[MAX_RELAYS] = {0};
-    static bool lastDebouncedState[MAX_RELAYS] = {false};
     for (int i = 0; i < gpioConfig.count; i++) {
         if (relayConfigs[i].manualOverride) {
             bool targetState = relayConfigs[i].manualState;
@@ -2516,7 +2598,7 @@ void processRelaySchedules() {
                 setRelayOutput(i, targetState);
                 lastRelayOutputs[i] = targetState;
             }
-            lastDebouncedState[i] = targetState;
+            lastDebouncedStateGlobal[i] = targetState;
             continue;
         }
         bool shouldBeOn = false;
@@ -2528,17 +2610,17 @@ void processRelaySchedules() {
                 break;
             }
         }
-        if (lastDebouncedState[i] != shouldBeOn) {
-            if (timeHasElapsed(now, lastStateChange[i], 500)) {
+        if (lastDebouncedStateGlobal[i] != shouldBeOn) {
+            if (timeHasElapsed(now, lastStateChangeGlobal[i], 500)) {
                 setRelayOutput(i, shouldBeOn);
                 lastRelayOutputs[i] = shouldBeOn;
-                lastDebouncedState[i] = shouldBeOn;
-                lastStateChange[i] = now;
+                lastDebouncedStateGlobal[i] = shouldBeOn;
+                lastStateChangeGlobal[i] = now;
             }
         } else if (lastRelayOutputs[i] != shouldBeOn) {
             setRelayOutput(i, shouldBeOn);
             lastRelayOutputs[i] = shouldBeOn;
-            lastStateChange[i] = now;
+            lastStateChangeGlobal[i] = now;
         }
     }
 }
@@ -2548,6 +2630,13 @@ void processRelaySchedules() {
 // =============================================================================
 void startMDNS() {
     if (mdnsStarted) return;
+    preferences.begin(NVS_NAMESPACE, true);
+    String persisted = preferences.getString("mdns_host", "");
+    preferences.end();
+    if (persisted.length() > 0 && persisted.length() < 32) {
+        strncpy(mdnsHostname, persisted.c_str(), 31);
+        mdnsHostname[31] = '\0';
+    }
     String hostname = String(mdnsHostname);
     if (hostname.length() == 0 || hostname == MDNS_HOSTNAME_DEFAULT) {
         hostname = String(sysConfig.ap_ssid);
@@ -2628,6 +2717,12 @@ void setup() {
     }
     loadConfiguration();
     loadExtConfig();
+    for (int i = 0; i < gpioConfig.count; i++) {
+        if (relayConfigs[i].manualOverride) {
+            setRelayOutput(i, relayConfigs[i].manualState);
+            lastRelayOutputs[i] = relayConfigs[i].manualState;
+        }
+    }
     bool timeInitialized = false;
     if (loadRTCFromDS3231()) {
         timeInitialized = true;
@@ -2649,7 +2744,7 @@ void setup() {
     }
     WiFi.mode(WIFI_AP_STA);
     if (extConfig.sta_enabled && strlen(sysConfig.sta_ssid) > 0) {
-        WiFi.disconnect(true);
+        WiFi.disconnect(false, false);
         delay(100);
         WiFi.begin(sysConfig.sta_ssid, sysConfig.sta_password);
         wifiConnecting = true;
@@ -2667,21 +2762,23 @@ void setup() {
     uint8_t hidden = extConfig.ap_hidden ? 1 : 0;
     WiFi.softAPdisconnect(true);
     delay(100);
+    bool apOk = false;
     if (strlen(sysConfig.ap_password) > 0) {
-        WiFi.softAP(sysConfig.ap_ssid, sysConfig.ap_password, ch, hidden);
+        apOk = WiFi.softAP(sysConfig.ap_ssid, sysConfig.ap_password, ch, hidden);
     } else {
-        WiFi.softAP(sysConfig.ap_ssid, NULL, ch, hidden);
+        apOk = WiFi.softAP(sysConfig.ap_ssid, NULL, ch, hidden);
+    }
+    if (!apOk) {
+        WiFi.softAP(sysConfig.ap_ssid,
+                    strlen(sysConfig.ap_password) > 0 ? sysConfig.ap_password : NULL,
+                    6, hidden);
     }
     startMDNS();
-    dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
+    if (WiFi.softAPIP() != IPAddress(0, 0, 0, 0)) {
+        dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
+    }
     setupWebServer();
     updateScheduleCache();
-    for (int i = 0; i < gpioConfig.count; i++) {
-        if (relayConfigs[i].manualOverride) {
-            setRelayOutput(i, relayConfigs[i].manualState);
-            lastRelayOutputs[i] = relayConfigs[i].manualState;
-        }
-    }
     lastMemoryCleanup = millis();
     lastHeapCheck = millis();
     lastConnectionActivity = millis();
@@ -2761,12 +2858,15 @@ void loop() {
             wifiGiveUpUntil = 0;
             wifiFirstAttempt = false;
             wifiPausedForScan = false;
-            lastNTPSync = 0;
+            if (ntpAsyncStage == 0 && ntpAsyncState != NTP_STATE_CONNECTING) {
+                lastNTPSync = 0;
+            }
             tryNTPSync();
         } else if (timeHasElapsed(now, wifiConnectStart, WIFI_CONNECT_TIMEOUT)) {
             wifiConnecting = false;
             wifiConnected = false;
-            if (wifiReconnectAttempts >= MAX_RECONNECT && !wifiFirstAttempt) {
+            wifiFirstAttempt = false;
+            if (wifiReconnectAttempts >= MAX_RECONNECT) {
                 wifiGiveUpUntil = now + 300000UL;
                 wifiReconnectAttempts = 0;
             }
@@ -2800,7 +2900,9 @@ void loop() {
             wifiConnected = true;
             wifiReconnectAttempts = 0;
             wifiPausedForScan = false;
-            lastNTPSync = 0;
+            if (ntpAsyncStage == 0 && ntpAsyncState != NTP_STATE_CONNECTING) {
+                lastNTPSync = 0;
+            }
             tryNTPSync();
         }
     }
@@ -2816,9 +2918,17 @@ void loop() {
         if (doSync) {
             tryNTPSync();
         }
-        if (ntpAsyncStage != 0 || ntpAsyncState == NTP_STATE_CONNECTING) {
-            updateNTPSync();
+    } else if (ntpAsyncStage != 0 || ntpAsyncState == NTP_STATE_CONNECTING) {
+        if (ntpAsyncStage == 0 || ntpAsyncStage == 1) {
+            ntpUDP.stop();
         }
+        ntpAsyncStage = 0;
+        ntpAsyncState = NTP_STATE_IDLE;
+        ntpAsyncCurrentServer = ntpServerIndex;
+        ntpRetryCount = 0;
+    }
+    if (ntpAsyncStage != 0 || ntpAsyncState == NTP_STATE_CONNECTING) {
+        updateNTPSync();
     }
     if (timeHasElapsed(now, lastScheduleProcess, SCHEDULE_PROCESS_INTERVAL)) {
         lastScheduleProcess = now;
@@ -2877,15 +2987,10 @@ void loadConfiguration() {
     if (!valid) {
         initDefaults();
     }
-    for (int i = 0; i < MAX_RELAYS; i++) {
-        for (int s = 0; s < 8; s++) {
-            if (relayConfigs[i].schedule.monthDays[s] == 0) {
-                relayConfigs[i].schedule.monthDays[s] = 0x7FFFFFFFUL;
-            }
-        }
-    }
-    strcpy(ap_ssid,     sysConfig.ap_ssid);
-    strcpy(ap_password, sysConfig.ap_password);
+    strncpy(ap_ssid, sysConfig.ap_ssid, sizeof(ap_ssid) - 1);
+    ap_ssid[sizeof(ap_ssid) - 1] = '\0';
+    strncpy(ap_password, sysConfig.ap_password, sizeof(ap_password) - 1);
+    ap_password[sizeof(ap_password) - 1] = '\0';
 }
 
 void saveConfiguration() {
@@ -2988,6 +3093,9 @@ void setupWebServer() {
         const char* hostname = doc["hostname"];
         if (hostname && strlen(hostname) > 0 && strlen(hostname) < 32) {
             setMDNSHostname(hostname);
+            preferences.begin(NVS_NAMESPACE, false);
+            preferences.putString("mdns_host", String(mdnsHostname));
+            preferences.end();
             server.send(200, "application/json", "{\"success\":true,\"hostname\":\"" + getMDNSHostname() + "\"}");
         } else {
             server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid hostname\"}");
@@ -3142,12 +3250,12 @@ void handleSaveRelay() {
     int s = 0;
     for (JsonObject sch : schedules) {
         if (s >= 8) break;
-        uint8_t sh = sch["startHour"]   | 0; if (sh > 23) sh = 0;
-        uint8_t sm = sch["startMinute"] | 0; if (sm > 59) sm = 0;
-        uint8_t ss = sch["startSecond"] | 0; if (ss > 59) ss = 0;
-        uint8_t eh = sch["stopHour"]    | 0; if (eh > 23) eh = 0;
-        uint8_t em = sch["stopMinute"]  | 0; if (em > 59) em = 0;
-        uint8_t es = sch["stopSecond"]  | 0; if (es > 59) es = 0;
+        uint8_t sh = sch["startHour"]   | 0; if (sh > 23) sh = 23;
+        uint8_t sm = sch["startMinute"] | 0; if (sm > 59) sm = 59;
+        uint8_t ss = sch["startSecond"] | 0; if (ss > 59) ss = 59;
+        uint8_t eh = sch["stopHour"]    | 0; if (eh > 23) eh = 23;
+        uint8_t em = sch["stopMinute"]  | 0; if (em > 59) em = 59;
+        uint8_t es = sch["stopSecond"]  | 0; if (es > 59) es = 59;
         relayConfigs[relay].schedule.startHour[s]   = sh;
         relayConfigs[relay].schedule.startMinute[s] = sm;
         relayConfigs[relay].schedule.startSecond[s] = ss;
@@ -3160,19 +3268,30 @@ void handleSaveRelay() {
             relayConfigs[relay].schedule.enabled[s] = false;
         }
         if (sch.containsKey("days")) {
-            relayConfigs[relay].schedule.days[s] = sch["days"].as<uint8_t>();
+            relayConfigs[relay].schedule.days[s] = sch["days"].as<uint8_t>() & 0x7F;
         } else {
             relayConfigs[relay].schedule.days[s] = DAY_ALL;
         }
         uint32_t rawMonthDays = sch["monthDays"] | 0;
-        if (rawMonthDays == 0) rawMonthDays = 0x7FFFFFFFUL;
-        relayConfigs[relay].schedule.monthDays[s] = rawMonthDays;
+        relayConfigs[relay].schedule.monthDays[s] = rawMonthDays & 0x7FFFFFFFUL;
         if (sch.containsKey("monthMask")) {
-            relayConfigs[relay].schedule.monthMask[s] = sch["monthMask"].as<uint16_t>();
+            relayConfigs[relay].schedule.monthMask[s] = sch["monthMask"].as<uint16_t>() & 0x0FFF;
         } else {
             relayConfigs[relay].schedule.monthMask[s] = MONTH_ALL;
         }
         s++;
+    }
+    for (; s < 8; s++) {
+        relayConfigs[relay].schedule.startHour[s]   = 0;
+        relayConfigs[relay].schedule.startMinute[s] = 0;
+        relayConfigs[relay].schedule.startSecond[s] = 0;
+        relayConfigs[relay].schedule.stopHour[s]    = 0;
+        relayConfigs[relay].schedule.stopMinute[s]  = 0;
+        relayConfigs[relay].schedule.stopSecond[s]  = 0;
+        relayConfigs[relay].schedule.enabled[s]     = false;
+        relayConfigs[relay].schedule.days[s]        = DAY_ALL;
+        relayConfigs[relay].schedule.monthDays[s]   = 0x7FFFFFFFUL;
+        relayConfigs[relay].schedule.monthMask[s]   = MONTH_ALL;
     }
     saveConfiguration();
     updateScheduleCache();
@@ -3220,7 +3339,9 @@ void handleGetTime() {
     if (timeSource == TIME_SOURCE_NTP) timeSourceStr = "ntp";
     else if (timeSource == TIME_SOURCE_BROWSER) timeSourceStr = "browser";
     else if (timeSource == TIME_SOURCE_RTC) timeSourceStr = "rtc";
-    unsigned long rtcSyncAge = (lastRTCDSync > 0) ? (millis() - lastRTCDSync) / 1000UL : 0;
+    unsigned long rtcSyncAge = (lastRTCDSync > 0)
+        ? (millis() - lastRTCDSync) / 1000UL
+        : 0xFFFFFFFFUL;
     String resp = "{\"time\":\"" + ts + "\",\"wifi\":" +
                   String(wifiConnected ? "true" : "false") + ",\"ntp\":" +
                   String((timeSource == TIME_SOURCE_NTP) ? "true" : "false") +
@@ -3233,17 +3354,15 @@ void handleGetTime() {
 
 void handleGetWiFi() {
     lastConnectionActivity = millis();
-    char buffer[384];
-    String localIPStr = WiFi.localIP().toString(); 
-    snprintf(buffer, sizeof(buffer),
-        "{\"ssid\":\"%s\",\"connected\":%s,\"ip\":\"%s\",\"rssi\":%d,\"sta_enabled\":%s}",
-        sysConfig.sta_ssid,
-        wifiConnected ? "true" : "false",
-        localIPStr.c_str(),
-        wifiConnected ? (int)WiFi.RSSI() : 0,
-        extConfig.sta_enabled ? "true" : "false"
-    );
-    server.send(200, "application/json", buffer);
+    DynamicJsonDocument doc(384);
+    doc["ssid"] = sysConfig.sta_ssid;
+    doc["connected"] = wifiConnected;
+    doc["ip"] = WiFi.localIP().toString();
+    doc["rssi"] = wifiConnected ? (int)WiFi.RSSI() : 0;
+    doc["sta_enabled"] = extConfig.sta_enabled ? true : false;
+    String resp;
+    serializeJson(doc, resp);
+    server.send(200, "application/json", resp);
 }
 
 void handleSaveWiFi() {
@@ -3264,19 +3383,39 @@ void handleSaveWiFi() {
         server.send(200, "application/json", "{\"success\":true,\"sta_enabled\":" + String(enable ? "true" : "false") + "}");
         return;
     }
-    const char* ssid = doc["ssid"];
-    if (ssid && strlen(ssid) > 0 && strlen(ssid) < 32) {
+    const char* ssidRaw = doc["ssid"];
+    if (!ssidRaw) {
+        server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid SSID\"}");
+        return;
+    }
+    char ssidTrim[64];
+    size_t rawLen = strlen(ssidRaw);
+    if (rawLen >= sizeof(ssidTrim)) rawLen = sizeof(ssidTrim) - 1;
+    size_t s0 = 0;
+    while (s0 < rawLen && isspace((unsigned char)ssidRaw[s0])) s0++;
+    size_t s1 = rawLen;
+    while (s1 > s0 && isspace((unsigned char)ssidRaw[s1 - 1])) s1--;
+    size_t outLen = s1 - s0;
+    memcpy(ssidTrim, ssidRaw + s0, outLen);
+    ssidTrim[outLen] = '\0';
+    const char* ssid = ssidTrim;
+    if (strlen(ssid) > 0 && strlen(ssid) < 32) {
         bool ssidChanged = (strcmp(sysConfig.sta_ssid, ssid) != 0);
         bool passChanged = false;
         strncpy(sysConfig.sta_ssid, ssid, 31);
         sysConfig.sta_ssid[31] = '\0';
-        if (doc.containsKey("password") && doc["password"].is<const char*>()) {
-            const char* pw = doc["password"];
-            if (pw && strlen(pw) > 0) {
-                passChanged = (strcmp(sysConfig.sta_password, pw) != 0);
-                strncpy(sysConfig.sta_password, pw, 63);
-                sysConfig.sta_password[63] = '\0';
-            } else if (ssidChanged) {
+        if (doc.containsKey("password")) {
+            if (doc["password"].is<const char*>()) {
+                const char* pw = doc["password"];
+                if (pw && strlen(pw) > 0) {
+                    passChanged = (strcmp(sysConfig.sta_password, pw) != 0);
+                    strncpy(sysConfig.sta_password, pw, 63);
+                    sysConfig.sta_password[63] = '\0';
+                } else {
+                    passChanged = (sysConfig.sta_password[0] != '\0');
+                    sysConfig.sta_password[0] = '\0';
+                }
+            } else {
                 passChanged = (sysConfig.sta_password[0] != '\0');
                 sysConfig.sta_password[0] = '\0';
             }
@@ -3287,7 +3426,7 @@ void handleSaveWiFi() {
         saveConfiguration();
         if (extConfig.sta_enabled && (ssidChanged || passChanged)) {
             wifiPausedForScan = false;
-            WiFi.disconnect(true);
+            WiFi.disconnect(false, false);
             delay(500);
             wifiConnected = false;
             wifiConnecting = true;
@@ -3365,16 +3504,15 @@ void handleWiFiScanResults() {
 
 void handleGetNTP() {
     lastConnectionActivity = millis();
-    char buffer[256];
-    snprintf(buffer, sizeof(buffer),
-        "{\"ntpServer\":\"%s\",\"gmtOffset\":%d,\"daylightOffset\":%d,\"syncHours\":%d,\"globalActiveMode\":%d}",
-        sysConfig.ntp_server,
-        sysConfig.gmt_offset,
-        sysConfig.daylight_offset,
-        extConfig.ntp_sync_hours,
-        extConfig.global_active_mode
-    );
-    server.send(200, "application/json", buffer);
+    DynamicJsonDocument doc(256);
+    doc["ntpServer"] = sysConfig.ntp_server;
+    doc["gmtOffset"] = sysConfig.gmt_offset;
+    doc["daylightOffset"] = sysConfig.daylight_offset;
+    doc["syncHours"] = extConfig.ntp_sync_hours;
+    doc["globalActiveMode"] = extConfig.global_active_mode;
+    String resp;
+    serializeJson(doc, resp);
+    server.send(200, "application/json", resp);
 }
 
 void handleSaveNTP() {
@@ -3389,24 +3527,47 @@ void handleSaveNTP() {
         server.send(400, "application/json", "{\"success\":false,\"error\":\"Bad JSON\"}");
         return;
     }
-    const char* srv = doc["ntpServer"];
-    if (srv && strlen(srv) > 0 && strlen(srv) < 48) {
+    bool changed = false;
+    if (doc.containsKey("ntpServer")) {
+        const char* srv = doc["ntpServer"];
+        if (!srv || strlen(srv) == 0 || strlen(srv) >= 48) {
+            server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid NTP server\"}");
+            return;
+        }
         strncpy(sysConfig.ntp_server, srv, 47);
         sysConfig.ntp_server[47] = '\0';
-        sysConfig.gmt_offset      = doc["gmtOffset"] | 0;
-        sysConfig.daylight_offset = doc["daylightOffset"] | 0;
-        if (doc.containsKey("syncHours")) {
-            uint8_t h = doc["syncHours"];
-            if (h >= 1 && h <= 24) {
-                extConfig.ntp_sync_hours = h;
-                saveExtConfig();
-            }
-        }
-        saveConfiguration();
-        server.send(200, "application/json", "{\"success\":true}");
-    } else {
-        server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid NTP server\"}");
+        changed = true;
     }
+    if (doc.containsKey("gmtOffset")) {
+        int32_t gmt = doc["gmtOffset"] | 0;
+        if (gmt > 50400) gmt = 50400;
+        if (gmt < -50400) gmt = -50400;
+        sysConfig.gmt_offset = gmt;
+        changed = true;
+    }
+    if (doc.containsKey("daylightOffset")) {
+        int32_t dst = doc["daylightOffset"] | 0;
+        if (dst > 7200) dst = 7200;
+        if (dst < -7200) dst = -7200;
+        sysConfig.daylight_offset = dst;
+        changed = true;
+    }
+    if (doc.containsKey("syncHours")) {
+        uint8_t h = doc["syncHours"];
+        if (h < 1 || h > 24) {
+            server.send(400, "application/json", "{\"success\":false,\"error\":\"syncHours must be 1-24\"}");
+            return;
+        }
+        extConfig.ntp_sync_hours = h;
+        saveExtConfig();
+        changed = true;
+    }
+    if (!changed) {
+        server.send(400, "application/json", "{\"success\":false,\"error\":\"No fields to update\"}");
+        return;
+    }
+    saveConfiguration();
+    server.send(200, "application/json", "{\"success\":true}");
 }
 
 void handleSyncNTP() {
@@ -3416,8 +3577,11 @@ void handleSyncNTP() {
             "{\"success\":false,\"error\":\"WiFi not connected or station disabled\"}");
         return;
     }
-    ntpAsyncState = NTP_STATE_IDLE;
-    ntpAsyncStage = 0;
+    if (ntpAsyncStage != 0 || ntpAsyncState == NTP_STATE_CONNECTING) {
+        server.send(200, "application/json",
+            "{\"success\":true,\"message\":\"NTP sync already in progress\"}");
+        return;
+    }
     lastNTPSync = 0;
     lastNTPAttempt = 0;
     server.send(200, "application/json", "{\"success\":true,\"message\":\"NTP sync initiated\"}");
@@ -3425,14 +3589,14 @@ void handleSyncNTP() {
 
 void handleGetAP() {
     lastConnectionActivity = millis();
-    char buffer[256];
-    snprintf(buffer, sizeof(buffer),
-        "{\"ap_ssid\":\"%s\",\"ap_password\":\"\",\"ap_channel\":%d,\"ap_hidden\":%s}",
-        sysConfig.ap_ssid,
-        extConfig.ap_channel,
-        extConfig.ap_hidden ? "true" : "false"
-    );
-    server.send(200, "application/json", buffer);
+    DynamicJsonDocument doc(256);
+    doc["ap_ssid"] = sysConfig.ap_ssid;
+    doc["ap_password"] = "";
+    doc["ap_channel"] = extConfig.ap_channel;
+    doc["ap_hidden"] = extConfig.ap_hidden ? true : false;
+    String resp;
+    serializeJson(doc, resp);
+    server.send(200, "application/json", resp);
 }
 
 void handleSaveAP() {
@@ -3457,19 +3621,28 @@ void handleSaveAP() {
         ssidChanged = (strcmp(sysConfig.ap_ssid, ssid) != 0);
         strncpy(sysConfig.ap_ssid, ssid, 31);
         sysConfig.ap_ssid[31] = '\0';
-        strcpy(ap_ssid, sysConfig.ap_ssid);
+        strncpy(ap_ssid, sysConfig.ap_ssid, sizeof(ap_ssid) - 1);
+        ap_ssid[sizeof(ap_ssid) - 1] = '\0';
     }
-    if (pw && strlen(pw) > 0) {
-        if (strlen(pw) >= 8) {
+    if (pw) {
+        size_t pwLen = strlen(pw);
+        if (pwLen == 0) {
+            if (doc.containsKey("ap_password")) {
+                passChanged = (sysConfig.ap_password[0] != '\0');
+                sysConfig.ap_password[0] = '\0';
+                ap_password[0] = '\0';
+            }
+        } else if (pwLen >= 8 && pwLen <= 31) {
             passChanged = (strcmp(sysConfig.ap_password, pw) != 0);
             strncpy(sysConfig.ap_password, pw, 31);
             sysConfig.ap_password[31] = '\0';
-            strcpy(ap_password, sysConfig.ap_password);
+            strncpy(ap_password, sysConfig.ap_password, sizeof(ap_password) - 1);
+            ap_password[sizeof(ap_password) - 1] = '\0';
+        } else {
+            server.send(400, "application/json",
+                "{\"success\":false,\"error\":\"Password must be 8-31 characters or empty\"}");
+            return;
         }
-    } else if (!pw || strlen(pw) == 0) {
-        passChanged = (sysConfig.ap_password[0] != '\0');
-        sysConfig.ap_password[0] = '\0';
-        ap_password[0] = '\0';
     }
     if (doc.containsKey("ap_channel")) {
         uint8_t ch = doc["ap_channel"];
@@ -3489,8 +3662,10 @@ void handleSaveAP() {
     saveExtConfig();
     bool needsRestart = ssidChanged || passChanged || channelChanged || hiddenChanged;
     if (needsRestart) {
-        healer.restartAPIfNeeded(true);
         server.send(200, "application/json", "{\"success\":true,\"restarted\":true}");
+        server.client().flush();
+        delay(200);
+        healer.restartAPIfNeeded(true);
     } else {
         server.send(200, "application/json", "{\"success\":true,\"restarted\":false}");
     }
@@ -3550,7 +3725,8 @@ void handleFactoryReset() {
     lastConnectionActivity = millis();
     server.send(200, "application/json",
         "{\"success\":true,\"message\":\"Factory reset complete. Device will restart with default settings.\"}");
-    delay(200);
+    server.client().flush();
+    delay(500);
     preferences.begin(NVS_NAMESPACE, false);
     preferences.clear();
     preferences.end();
@@ -3573,10 +3749,8 @@ void handleGetGPIOConfig() {
         activeLow.add(gpioConfig.activeLow[i]);
     }
     JsonArray available = doc.createNestedArray("availablePins");
-    // change gpio pins
-    int validPins[] = {23, 32, 33, 25, 26, 27, 14, 13, 1, 3, 19, 18, 5, 4, 2, 15};
-    for (int p : validPins) {
-        available.add(p);
+    for (int p = 0; p < 16; p++) {
+        available.add(DEFAULT_RELAY_PINS[p]);
     }
     String resp;
     serializeJson(doc, resp);
@@ -3600,6 +3774,32 @@ void handleSaveGPIOConfig() {
     if (newCount > MAX_RELAYS) {
         server.send(400, "application/json", "{\"success\":false,\"error\":\"Too many pins\"}");
         return;
+    }
+    // change gpio
+    static const uint8_t SAFE_PINS[] = {23, 32, 33, 25, 26, 27, 14, 13, 1, 3, 19, 18, 5, 4, 2, 15};
+    uint8_t parsed[MAX_RELAYS] = {0};
+    uint8_t pi = 0;
+    for (JsonVariant pv : pins) {
+        if (pi >= MAX_RELAYS) break;
+        parsed[pi++] = pv.as<uint8_t>();
+    }
+    for (uint8_t i = 0; i < newCount; i++) {
+        bool allowed = false;
+        for (uint8_t sp : SAFE_PINS) {
+            if (sp == parsed[i]) { allowed = true; break; }
+        }
+        if (!allowed) {
+            server.send(400, "application/json",
+                "{\"success\":false,\"error\":\"GPIO pin not allowed\"}");
+            return;
+        }
+        for (uint8_t j = i + 1; j < newCount; j++) {
+            if (parsed[i] == parsed[j]) {
+                server.send(400, "application/json",
+                    "{\"success\":false,\"error\":\"Duplicate pin\"}");
+                return;
+            }
+        }
     }
     bool oldManualOverride[MAX_RELAYS];
     bool oldManualState[MAX_RELAYS];
@@ -3642,6 +3842,8 @@ void handleSaveGPIOConfig() {
         bool state = preserve ? oldRelayOutputs[i] : false;
         setRelayOutput(i, state);
         lastRelayOutputs[i] = state;
+        lastDebouncedStateGlobal[i] = state;
+        lastStateChangeGlobal[i] = 0;
     }
     saveGPIOConfig();
     saveConfiguration();
@@ -3668,6 +3870,17 @@ void handleAddGPIO() {
         return;
     }
     uint8_t newPin = (uint8_t)rawPin;
+    // change gpio
+    static const uint8_t SAFE_PINS[] = {23, 32, 33, 25, 26, 27, 14, 13, 1, 3, 19, 18, 5, 4, 2, 15};
+    bool pinAllowed = false;
+    for (uint8_t sp : SAFE_PINS) {
+        if (sp == newPin) { pinAllowed = true; break; }
+    }
+    if (!pinAllowed) {
+        server.send(400, "application/json",
+            "{\"success\":false,\"error\":\"GPIO pin not allowed (use a safe output pin)\"}");
+        return;
+    }
     if (gpioConfig.count >= MAX_RELAYS) {
         server.send(400, "application/json", "{\"success\":false,\"error\":\"Maximum relays reached\"}");
         return;
@@ -3681,6 +3894,8 @@ void handleAddGPIO() {
     gpioConfig.pins[gpioConfig.count] = newPin;
     gpioConfig.activeLow[gpioConfig.count] = true;
     initScheduleDefaults(gpioConfig.count);
+    lastDebouncedStateGlobal[gpioConfig.count] = false;
+    lastStateChangeGlobal[gpioConfig.count] = 0;
     gpioConfig.count++;
     pinMode(newPin, OUTPUT);
     setRelayOutput(gpioConfig.count - 1, false);
@@ -3715,11 +3930,15 @@ void handleDeleteGPIO() {
         relayConfigs[i] = relayConfigs[i + 1];
         lastRelayOutputs[i] = lastRelayOutputs[i + 1];
         scheduleActiveCache[i] = scheduleActiveCache[i + 1];
+        lastDebouncedStateGlobal[i] = lastRelayOutputs[i];
+        lastStateChangeGlobal[i] = 0;
     }
     initScheduleDefaults(gpioConfig.count - 1);
     gpioConfig.activeLow[gpioConfig.count - 1] = true;
     lastRelayOutputs[gpioConfig.count - 1] = false;
     scheduleActiveCache[gpioConfig.count - 1] = false;
+    lastDebouncedStateGlobal[gpioConfig.count - 1] = false;
+    lastStateChangeGlobal[gpioConfig.count - 1] = 0;
     gpioConfig.count--;
     saveGPIOConfig();
     saveConfiguration();
