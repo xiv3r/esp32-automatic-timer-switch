@@ -574,6 +574,7 @@ void initRTC() {
             driftCompensation = 1.0f;
             rtcMicrosAtLastSync = micros();
             lastRTCRebase = millis();
+            lastRTCDSync = millis();
             rtcInitialized = true;
             timeSource = TIME_SOURCE_RTC;
         }
@@ -720,6 +721,7 @@ bool loadRTCFromDS3231() {
                 driftCompensation = 1.0f;
                 rtcMicrosAtLastSync = micros();
                 lastRTCRebase = millis();
+                lastRTCDSync = millis();
                 rtcInitialized = true;
                 timeSource = TIME_SOURCE_RTC;
                 if (sysConfig.last_rtc_epoch == 0 ||
@@ -1953,7 +1955,17 @@ function updateTimeStatus(d){
   else if(d.timeSource==='rtc'){ icon='&#x1F4BF;';msg='Time source: <strong>DS3231 Real Time Clock</strong> — High Accuracy'; cls='ai'; }
   else{ icon='&#x26A0;&#xFE0F;';msg='Time source: <strong>None</strong> — Please sync time'; cls='aw'; }
   let rtcInfo = '';
-  if(d.rtcPresent){ rtcInfo = '<br><small>✅ DS3231 RTC detected on GPIO8/9'; if(d.rtcSynced) rtcInfo += ' | Last sync: ' + d.rtcSyncAge + 's ago'; rtcInfo += '</small>'; }
+  if(d.rtcPresent){
+    rtcInfo = '<br><small>✅ DS3231 RTC detected on GPIO8/9';
+    if(d.rtcSynced){
+      if(d.rtcSyncAge === 4294967295 || d.rtcSyncAge < 0){
+        rtcInfo += ' | Last sync: Just now';
+      } else {
+        rtcInfo += ' | Last sync: ' + d.rtcSyncAge + 's ago';
+      }
+    }
+    rtcInfo += '</small>';
+  }
   else { rtcInfo = '<br><small>⚠️ DS3231 RTC not detected</small>'; }
   s.innerHTML=icon+' '+msg+rtcInfo;
   s.className='alert '+cls;
@@ -3031,21 +3043,21 @@ void setMDNSHostname(const char* hostname) {
 void setup() {
     initRTC();
     loadGPIOConfig();
-    pinMode(BOOT_BUTTON_PIN, INPUT_PULLUP);
-    for (int i = 0; i < gpioConfig.count; i++) {
-        pinMode(getRelayPin(i), OUTPUT);
-        setRelayOutput(i, false);
-        lastRelayOutputs[i] = false;
-    }
     for (int i = 0; i < MAX_RELAYS; i++) initScheduleDefaults(i);
     loadConfiguration();
     loadExtConfig();
     loadMQTTConfig();
+    pinMode(BOOT_BUTTON_PIN, INPUT_PULLUP);
     for (int i = 0; i < gpioConfig.count; i++) {
-        if (relayConfigs[i].manualOverride) {
-            setRelayOutput(i, relayConfigs[i].manualState);
-            lastRelayOutputs[i] = relayConfigs[i].manualState;
-        }
+        int pin = getRelayPin(i);
+        if (pin < 0) continue;
+        bool initial = relayConfigs[i].manualOverride ? relayConfigs[i].manualState : false;
+        digitalWrite(pin, isActiveLow(i) ? !initial : initial);
+        pinMode(pin, OUTPUT);
+        setRelayOutput(i, initial);
+        lastRelayOutputs[i] = initial;
+        lastDebouncedStateGlobal[i] = initial;
+        lastStateChangeGlobal[i] = 0;
     }
     bool timeInitialized = false;
     if (loadRTCFromDS3231()) {
@@ -3832,7 +3844,6 @@ void handleSaveNTP() {
         return;
     }
     saveConfiguration();
-
     if (doc.containsKey("ntpServer")) {
         ntpServerIndex = 0;
         ntpAsyncCurrentServer = 0;
@@ -3842,7 +3853,6 @@ void handleSaveNTP() {
         lastNTPSync = 0;
         lastNTPAttempt = 0;
     }
-
     server.send(200, "application/json", "{\"success\":true}");
 }
 
