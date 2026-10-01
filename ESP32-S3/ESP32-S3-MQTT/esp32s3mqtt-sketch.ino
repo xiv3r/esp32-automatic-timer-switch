@@ -1942,10 +1942,10 @@ function updateTimeStatus(d){
 }
 setInterval(tick,1000);tick();
 fetch('/api/ntp').then(r=>r.json()).then(d=>{
-  document.getElementById('srv').value=d.ntpServer||'time.google.com';
-  document.getElementById('gmt').value=d.gmtOffset||28800;
-  document.getElementById('dst').value=d.daylightOffset||0;
-  document.getElementById('shi').value=d.syncHours||1;
+  document.getElementById('srv').value=d.ntpServer??'time.google.com';
+  document.getElementById('gmt').value=d.gmtOffset??28800;
+  document.getElementById('dst').value=d.daylightOffset??0;
+  document.getElementById('shi').value=d.syncHours??1;
 }).catch(()=>{});
 function save(){
   const h=parseInt(document.getElementById('shi').value);
