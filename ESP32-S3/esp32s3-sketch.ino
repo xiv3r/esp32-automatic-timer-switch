@@ -1501,9 +1501,10 @@ function toggleStation() {
         btn.disabled = false;
         if(d.success) {
             updateStaButton(willEnable);
-            toast('WiFi Station ' + (willEnable ? 'ON' : 'OFF'), true);
             if(!willEnable) {
-                toast('NTP time sync unavailable until re-enabled. Use DS3231 RTC or browser sync.', false);
+                toast('WiFi Station OFF \u2014 NTP unavailable; use RTC/Browser sync', false);
+            } else {
+                toast('WiFi Station ON', true);
             }
             const stationDiv = document.getElementById('stationConfig');
             if(stationDiv) {
@@ -2349,8 +2350,13 @@ void processNTPResponse() {
 void updateNTPSync() {
     switch (ntpAsyncStage) {
         case 0:
-            if (ntpRetryCount < NUM_NTP_SERVERS) {
-                startNTPRequest(NTP_SERVERS[ntpAsyncCurrentServer]);
+            if (ntpRetryCount == 0 && strlen(sysConfig.ntp_server) > 0) {
+                startNTPRequest(sysConfig.ntp_server);
+            } else if (ntpRetryCount <= NUM_NTP_SERVERS) {
+                uint8_t idx = (ntpRetryCount == 0) ? 0 : (ntpRetryCount - 1);
+                if (idx < NUM_NTP_SERVERS) {
+                    startNTPRequest(NTP_SERVERS[idx]);
+                }
             } else {
                 ntpFailCount++;
                 ntpRetryCount = 0;
@@ -2366,9 +2372,7 @@ void updateNTPSync() {
             if (ntpReceived) {
                 syncInternalRTC(ntpResult, TIME_SOURCE_NTP);
                 ntpFailCount = 0;
-                ntpServerIndex = (ntpAsyncCurrentServer + 1) % NUM_NTP_SERVERS;
             }
-            ntpAsyncCurrentServer = (ntpAsyncCurrentServer + 1) % NUM_NTP_SERVERS;
             ntpRetryCount = 0;
             ntpAsyncStage = 0;
             ntpAsyncState = NTP_STATE_IDLE;
@@ -2376,7 +2380,6 @@ void updateNTPSync() {
         case 3:
             ntpUDP.stop();
             ntpRetryCount++;
-            ntpAsyncCurrentServer = (ntpAsyncCurrentServer + 1) % NUM_NTP_SERVERS;
             ntpAsyncStage = 0;
             break;
     }
@@ -2400,7 +2403,6 @@ void tryNTPSync() {
     }
     lastNTPAttempt = now;
     ntpRetryCount = 0;
-    ntpAsyncCurrentServer = ntpServerIndex;
     ntpAsyncStage = 0;
     ntpAsyncState = NTP_STATE_CONNECTING;
 }
@@ -2428,7 +2430,25 @@ void handleBrowserTimeSync() {
         return;
     }
     uint64_t currentEpoch = getCurrentEpoch();
-    if (currentEpoch >= MIN_UNIX_TIME_64) {
+
+    bool trustCurrentTime = false;
+    unsigned long nowMs = millis();
+
+    if (timeSource == TIME_SOURCE_NTP && lastNTPSync > 0 &&
+        !timeHasElapsed(nowMs, lastNTPSync, 86400000UL)) {
+        trustCurrentTime = true;
+    }
+    if (timeSource == TIME_SOURCE_RTC && rtcPresent && rtcTimeValid &&
+        lastRTCDSync > 0 &&
+        !timeHasElapsed(nowMs, lastRTCDSync, 86400000UL)) {
+        trustCurrentTime = true;
+    }
+    if (timeSource == TIME_SOURCE_BROWSER && lastBrowserSync > 0 &&
+        !timeHasElapsed(nowMs, lastBrowserSync, 86400000UL)) {
+        trustCurrentTime = true;
+    }
+
+    if (trustCurrentTime && currentEpoch >= MIN_UNIX_TIME_64) {
         uint64_t diff = (browserUtcEpoch > currentEpoch)
             ? (browserUtcEpoch - currentEpoch)
             : (currentEpoch - browserUtcEpoch);
@@ -3567,6 +3587,17 @@ void handleSaveNTP() {
         return;
     }
     saveConfiguration();
+
+    if (doc.containsKey("ntpServer")) {
+        ntpServerIndex = 0;
+        ntpAsyncCurrentServer = 0;
+        ntpAsyncStage = 0;
+        ntpAsyncState = NTP_STATE_IDLE;
+        ntpRetryCount = 0;
+        lastNTPSync = 0;
+        lastNTPAttempt = 0;
+    }
+
     server.send(200, "application/json", "{\"success\":true}");
 }
 
