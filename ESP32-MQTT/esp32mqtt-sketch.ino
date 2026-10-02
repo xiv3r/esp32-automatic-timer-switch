@@ -85,7 +85,6 @@ static bool factoryResetTriggered = false;
 //  mDNS Settings
 // =============================================================================
 #define MDNS_HOSTNAME_DEFAULT "esp32"
-static const unsigned long MDNS_RESTART_DELAY = 2000UL;
 
 // =============================================================================
 //  NTP Fallback Pool
@@ -292,12 +291,10 @@ unsigned long rtcMicrosAtLastSync      = 0;
 unsigned long lastRTCRebase            = 0;
 static unsigned long lastInternalRTCSave = 0;
 static const unsigned long INTERNAL_RTC_SAVE_INTERVAL = 3600000UL;
-uint8_t       ntpServerIndex  = 0;
 uint8_t       ntpFailCount    = 0;
 unsigned long lastNTPSync     = 0;
 unsigned long lastNTPAttempt  = 0;
 static uint8_t  ntpAsyncState = NTP_STATE_IDLE;
-static uint8_t  ntpAsyncCurrentServer = 0;
 static unsigned long ntpAsyncPhaseStart = 0;
 static WiFiUDP  ntpUDP;
 static uint8_t  ntpPacketBuffer[NTP_PACKET_SIZE];
@@ -312,16 +309,11 @@ unsigned long wifiGiveUpUntil       = 0;
 static const uint8_t MAX_RECONNECT  = 10;
 bool          wifiConnecting        = false;
 unsigned long wifiConnectStart      = 0;
-bool          wifiFirstAttempt      = true;
 volatile bool scanInProgress  = false;
 volatile int  scanResultCount = -1;
 unsigned long scanStartTime   = 0;
-char ap_ssid[32]     = "ESP32_16CH_Timer_Switch";
-char ap_password[32] = "12345678";
 bool          mdnsStarted           = false;
 char          mdnsHostname[32]      = MDNS_HOSTNAME_DEFAULT;
-unsigned long mdnsRestartPending    = 0;
-bool          mdnsRestartScheduled  = false;
 static bool     scheduleActiveCache[MAX_RELAYS] = {false};
 static unsigned long lastScheduleCacheUpdate = 0;
 static const unsigned long SCHEDULE_CACHE_INTERVAL = 250UL;
@@ -331,8 +323,6 @@ static unsigned long lastStateChangeGlobal[MAX_RELAYS] = {0};
 static bool lastDebouncedStateGlobal[MAX_RELAYS] = {false};
 static unsigned long lastMemoryCleanup = 0;
 static unsigned long lastHeapCheck = 0;
-static size_t minFreeHeap = 0;
-static unsigned long lastConnectionActivity = 0;
 
 // =============================================================================
 //  Self-Healing Class
@@ -409,7 +399,6 @@ void processNTPResponse();
 void updateNTPSync();
 float getRTCTemperature();
 String getMDNSHostname();
-void setMDNSHostname(const char* hostname);
 void buildMQTTTopic(char* buf, size_t len, const char* suffix);
 void buildRelayTopic(char* buf, size_t len, int relay, const char* suffix);
 void mqttConnect();
@@ -541,7 +530,6 @@ void setWiFiStationEnabled(bool enabled) {
             WiFi.begin(sysConfig.sta_ssid, sysConfig.sta_password);
             wifiConnecting = true;
             wifiConnectStart = millis();
-            wifiFirstAttempt = true;
             wifiReconnectAttempts = 0;
             wifiGiveUpUntil = 0;
         }
@@ -956,7 +944,6 @@ void checkAndCleanMemory() {
     if (timeHasElapsed(now, lastHeapCheck, 300000)) {
         lastHeapCheck = now;
         size_t freeHeap = ESP.getFreeHeap();
-        if (freeHeap < minFreeHeap || minFreeHeap == 0) minFreeHeap = freeHeap;
         if (freeHeap < 20000) performMemoryCleanup();
     }
     if (timeHasElapsed(now, lastMemoryCleanup, 3600000)) {
@@ -1518,7 +1505,6 @@ const char style_css[] PROGMEM = R"css(
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#EEF2F7;color:#1A1A2E;font-size:14px;line-height:1.5}
 header{background:linear-gradient(135deg,#1565C0 0%,#0D47A1 100%);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:50;box-shadow:0 2px 10px rgba(0,0,0,.3);flex-wrap:wrap}
-.logo{font-size:13px;font-weight:700;white-space:nowrap}
 nav{display:flex;gap:3px;flex-wrap:wrap;flex:1}
 nav a{color:rgba(255,255,255,.8);text-decoration:none;padding:5px 8px;border-radius:5px;font-size:12px;transition:.15s}
 nav a:hover,nav a.cur{background:rgba(255,255,255,.2);color:#fff}
@@ -2810,13 +2796,8 @@ void handleBrowserTimeSync() {
     String resp;
     DynamicJsonDocument respDoc(512);
     respDoc["success"] = true;
-    respDoc["utc_epoch"] = (uint32_t)browserUtcEpoch;
     respDoc["local_time"] = timeStr;
-    respDoc["gmt_offset"] = sysConfig.gmt_offset;
-    respDoc["time_source"] = "browser";
-    respDoc["rtc_present"] = rtcPresent;
     respDoc["rtc_synced"] = rtcPresent && rtcTimeValid;
-    respDoc["drift"] = 1.0f;
     serializeJson(respDoc, resp);
     server.send(200, "application/json", resp);
 }
@@ -2842,7 +2823,7 @@ void beginWiFiConnect() {
 // =============================================================================
 //  SINGLE SCHEDULE ACTIVE CHECK
 // =============================================================================
-inline bool isSingleScheduleSlotActive(uint64_t epoch, uint64_t localEpoch, struct tm* ti,
+inline bool isSingleScheduleSlotActive(uint64_t epoch,
                                        int currentWeekday, int currentMonthDay, int currentMonth, int currentSeconds,
                                        const TimerSchedule& sched, int slot) {
     if (!sched.enabled[slot]) return false;
@@ -2903,7 +2884,7 @@ void updateScheduleCache() {
         }
         bool hasActive = false;
         for (int s = 0; s < 8; s++) {
-            if (isSingleScheduleSlotActive(epoch, localEpoch, ti,
+            if (isSingleScheduleSlotActive(epoch,
                                            currentWeekday, currentMonthDay, currentMonth, cur,
                                            relayConfigs[i].schedule, s)) {
                 hasActive = true;
@@ -2945,7 +2926,7 @@ void processRelaySchedules() {
         }
         bool shouldBeOn = false;
         for (int s = 0; s < 8; s++) {
-            if (isSingleScheduleSlotActive(epoch, localEpoch, ti,
+            if (isSingleScheduleSlotActive(epoch,
                                            currentWeekday, currentMonthDay, currentMonth, cur,
                                            relayConfigs[i].schedule, s)) {
                 shouldBeOn = true;
@@ -3010,31 +2991,7 @@ void startMDNS() {
     }
 }
 
-void restartMDNS() {
-    healer.liveReconfigureMDNS();
-}
-
-void scheduleMDNSRestart() {
-    mdnsRestartScheduled = true;
-    mdnsRestartPending = millis() + MDNS_RESTART_DELAY;
-}
 String getMDNSHostname() { return String(mdnsHostname); }
-
-void setMDNSHostname(const char* hostname) {
-    if (hostname && strlen(hostname) > 0 && strlen(hostname) < 32) {
-        String sanitized;
-        for (size_t i = 0; i < strlen(hostname); i++) {
-            char c = tolower(hostname[i]);
-            if (isalnum(c) || c == '-') sanitized += c;
-            else if (c == ' ' || c == '_') sanitized += '-';
-        }
-        if (sanitized.length() > 0) {
-            strncpy(mdnsHostname, sanitized.c_str(), 31);
-            mdnsHostname[31] = '\0';
-            if (mdnsStarted) scheduleMDNSRestart();
-        }
-    }
-}
 
 // =============================================================================
 //  SETUP
@@ -3084,7 +3041,6 @@ void setup() {
         WiFi.begin(sysConfig.sta_ssid, sysConfig.sta_password);
         wifiConnecting = true;
         wifiConnectStart = millis();
-        wifiFirstAttempt = true;
     } else if (!extConfig.sta_enabled) {
         WiFi.mode(WIFI_AP);
     }
@@ -3112,7 +3068,6 @@ void setup() {
     updateScheduleCache();
     lastMemoryCleanup = millis();
     lastHeapCheck = millis();
-    lastConnectionActivity = millis();
     lastInternalRTCSave = millis();
 }
 
@@ -3126,7 +3081,6 @@ void loop() {
     static unsigned long lastConnectionCleanup = 0;
     static unsigned long lastHealingCheck = 0;
     unsigned long now = millis();
-    if (server.client()) lastConnectionActivity = now;
     if (timeHasElapsed(now, lastConnectionCleanup, 60000)) {
         lastConnectionCleanup = now;
         if (!scanInProgress) {
@@ -3166,10 +3120,6 @@ void loop() {
         }
     }
     autoSaveInternalRTC();
-    if (mdnsRestartScheduled && isTimeReached(now, mdnsRestartPending)) {
-        mdnsRestartScheduled = false;
-        restartMDNS();
-    }
     if (scanInProgress) {
         if (timeHasElapsed(now, scanStartTime, 10000UL)) {
             WiFi.scanDelete();
@@ -3186,7 +3136,6 @@ void loop() {
             wifiConnected = true;
             wifiReconnectAttempts = 0;
             wifiGiveUpUntil = 0;
-            wifiFirstAttempt = false;
             wifiPausedForScan = false;
             if (ntpAsyncStage == 0 && ntpAsyncState != NTP_STATE_CONNECTING) {
                 lastNTPSync = 0;
@@ -3195,7 +3144,6 @@ void loop() {
         } else if (timeHasElapsed(now, wifiConnectStart, WIFI_CONNECT_TIMEOUT)) {
             wifiConnecting = false;
             wifiConnected = false;
-            wifiFirstAttempt = false;
             if (wifiReconnectAttempts >= MAX_RECONNECT) {
                 wifiGiveUpUntil = now + 300000UL;
                 wifiReconnectAttempts = 0;
@@ -3246,7 +3194,6 @@ void loop() {
         }
         ntpAsyncStage = 0;
         ntpAsyncState = NTP_STATE_IDLE;
-        ntpAsyncCurrentServer = ntpServerIndex;
         ntpRetryCount = 0;
     }
     if (ntpAsyncStage != 0 || ntpAsyncState == NTP_STATE_CONNECTING) {
@@ -3309,10 +3256,6 @@ void loadConfiguration() {
         }
     }
     if (!valid) initDefaults();
-    strncpy(ap_ssid, sysConfig.ap_ssid, sizeof(ap_ssid) - 1);
-    ap_ssid[sizeof(ap_ssid) - 1] = '\0';
-    strncpy(ap_password, sysConfig.ap_password, sizeof(ap_password) - 1);
-    ap_password[sizeof(ap_password) - 1] = '\0';
 }
 
 void saveConfiguration() {
@@ -3391,32 +3334,6 @@ void setupWebServer() {
     server.on("/api/mqtt",        HTTP_GET,  handleGetMQTT);
     server.on("/api/mqtt",        HTTP_POST, handleSaveMQTT);
     server.on("/api/mqtt/toggle", HTTP_POST, handleToggleMQTT);
-    server.on("/api/mdns", HTTP_GET, []() {
-        String resp = "{\"hostname\":\"" + getMDNSHostname() +
-                      "\",\"started\":" + String(mdnsStarted ? "true" : "false") +
-                      ",\"url\":\"http://" + getMDNSHostname() + ".local\"}";
-        server.send(200, "application/json", resp);
-    });
-    server.on("/api/mdns", HTTP_POST, []() {
-        if (!server.hasArg("plain")) { server.send(400, "application/json", "{\"success\":false,\"error\":\"No data\"}"); return; }
-        StaticJsonDocument<128> doc;
-        DeserializationError err = deserializeJson(doc, server.arg("plain"));
-        if (err) { server.send(400, "application/json", "{\"success\":false,\"error\":\"Bad JSON\"}"); return; }
-        const char* hostname = doc["hostname"];
-        if (hostname && strlen(hostname) > 0 && strlen(hostname) < 32) {
-            setMDNSHostname(hostname);
-            preferences.begin(NVS_NAMESPACE, false);
-            preferences.putString("mdns_host", String(mdnsHostname));
-            preferences.end();
-            server.send(200, "application/json", "{\"success\":true,\"hostname\":\"" + getMDNSHostname() + "\"}");
-        } else {
-            server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid hostname\"}");
-        }
-    });
-    server.on("/api/mdns/restart", HTTP_POST, []() {
-        restartMDNS();
-        server.send(200, "application/json", "{\"success\":true}");
-    });
     server.on("/api/system",        HTTP_GET,  handleGetSystem);
     server.on("/api/reset",         HTTP_POST, handleReset);
     server.on("/api/factory-reset", HTTP_POST, handleFactoryReset);
@@ -3458,7 +3375,6 @@ void setupWebServer() {
 //  API HANDLERS
 // =============================================================================
 void handleGetRelays() {
-    lastConnectionActivity = millis();
     server.setContentLength(CONTENT_LENGTH_UNKNOWN);
     server.send(200, "application/json", "");
     server.sendContent("[");
@@ -3468,7 +3384,6 @@ void handleGetRelays() {
         relayDoc["state"] = lastRelayOutputs[i];
         relayDoc["manual"] = relayConfigs[i].manualOverride;
         relayDoc["name"] = String(relayConfigs[i].name);
-        relayDoc["pin"] = getRelayPin(i);
         JsonArray schedules = relayDoc.createNestedArray("schedules");
         for (int s = 0; s < 8; s++) {
             JsonObject sch = schedules.createNestedObject();
@@ -3492,7 +3407,6 @@ void handleGetRelays() {
 }
 
 void handleManualControl() {
-    lastConnectionActivity = millis();
     if (!server.hasArg("plain")) { server.send(400, "application/json", "{\"success\":false,\"error\":\"No data\"}"); return; }
     StaticJsonDocument<128> doc;
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
@@ -3517,7 +3431,6 @@ void handleManualControl() {
 }
 
 void handleResetManual() {
-    lastConnectionActivity = millis();
     if (!server.hasArg("plain")) { server.send(400, "application/json", "{\"success\":false,\"error\":\"No data\"}"); return; }
     StaticJsonDocument<64> doc;
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
@@ -3536,7 +3449,6 @@ void handleResetManual() {
 }
 
 void handleSaveRelay() {
-    lastConnectionActivity = millis();
     if (!server.hasArg("plain")) { server.send(400, "application/json", "{\"success\":false,\"error\":\"No data\"}"); return; }
     DynamicJsonDocument doc(4096);
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
@@ -3601,7 +3513,6 @@ void handleSaveRelay() {
 }
 
 void handleRelayName() {
-    lastConnectionActivity = millis();
     if (!server.hasArg("plain")) { server.send(400, "application/json", "{\"success\":false,\"error\":\"No data\"}"); return; }
     StaticJsonDocument<128> doc;
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
@@ -3621,7 +3532,6 @@ void handleRelayName() {
 }
 
 void handleGetTime() {
-    lastConnectionActivity = millis();
     String ts = "--:--:--";
     uint64_t utcEp = getCurrentEpoch();
     if (utcEp > MIN_UNIX_TIME_64) {
@@ -3639,8 +3549,7 @@ void handleGetTime() {
     else if (timeSource == TIME_SOURCE_RTC) timeSourceStr = "rtc";
     unsigned long rtcSyncAge = (lastRTCDSync > 0) ? (millis() - lastRTCDSync) / 1000UL : 0xFFFFFFFF;
     String resp = "{\"time\":\"" + ts + "\",\"wifi\":" +
-                  String(wifiConnected ? "true" : "false") + ",\"ntp\":" +
-                  String((timeSource == TIME_SOURCE_NTP) ? "true" : "false") +
+                  String(wifiConnected ? "true" : "false") +
                   ",\"timeSource\":\"" + timeSourceStr +
                   "\",\"rtcPresent\":" + String(rtcPresent ? "true" : "false") +
                   ",\"rtcSynced\":" + String(rtcTimeValid ? "true" : "false") +
@@ -3649,7 +3558,6 @@ void handleGetTime() {
 }
 
 void handleGetWiFi() {
-    lastConnectionActivity = millis();
     DynamicJsonDocument doc(384);
     doc["ssid"] = sysConfig.sta_ssid;
     doc["connected"] = wifiConnected;
@@ -3662,7 +3570,6 @@ void handleGetWiFi() {
 }
 
 void handleSaveWiFi() {
-    lastConnectionActivity = millis();
     if (!server.hasArg("plain")) { server.send(400, "application/json", "{\"success\":false,\"error\":\"No data\"}"); return; }
     StaticJsonDocument<256> doc;
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
@@ -3723,7 +3630,6 @@ void handleSaveWiFi() {
             wifiConnectStart = millis();
             wifiReconnectAttempts = 0;
             wifiGiveUpUntil = 0;
-            wifiFirstAttempt = true;
             if (WiFi.getMode() != WIFI_AP_STA) WiFi.mode(WIFI_AP_STA);
             WiFi.begin(sysConfig.sta_ssid, sysConfig.sta_password);
         }
@@ -3734,7 +3640,6 @@ void handleSaveWiFi() {
 }
 
 void handleWiFiScanStart() {
-    lastConnectionActivity = millis();
     if (!extConfig.sta_enabled) {
         server.send(400, "application/json", "{\"success\":false,\"error\":\"WiFi station is disabled\"}");
         return;
@@ -3751,7 +3656,6 @@ void handleWiFiScanStart() {
 }
 
 void handleWiFiScanResults() {
-    lastConnectionActivity = millis();
     if (scanInProgress) {
         int n = WiFi.scanComplete();
         if (n == WIFI_SCAN_RUNNING) {
@@ -3785,7 +3689,6 @@ void handleWiFiScanResults() {
 }
 
 void handleGetNTP() {
-    lastConnectionActivity = millis();
     DynamicJsonDocument doc(256);
     doc["ntpServer"] = sysConfig.ntp_server;
     doc["gmtOffset"] = sysConfig.gmt_offset;
@@ -3798,7 +3701,6 @@ void handleGetNTP() {
 }
 
 void handleSaveNTP() {
-    lastConnectionActivity = millis();
     if (!server.hasArg("plain")) { server.send(400, "application/json", "{\"success\":false,\"error\":\"No data\"}"); return; }
     StaticJsonDocument<256> doc;
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
@@ -3844,8 +3746,6 @@ void handleSaveNTP() {
     }
     saveConfiguration();
     if (doc.containsKey("ntpServer")) {
-        ntpServerIndex = 0;
-        ntpAsyncCurrentServer = 0;
         ntpAsyncStage = 0;
         ntpAsyncState = NTP_STATE_IDLE;
         ntpRetryCount = 0;
@@ -3856,7 +3756,6 @@ void handleSaveNTP() {
 }
 
 void handleSyncNTP() {
-    lastConnectionActivity = millis();
     if (!wifiConnected || !extConfig.sta_enabled) {
         server.send(400, "application/json",
             "{\"success\":false,\"error\":\"WiFi not connected or station disabled\"}");
@@ -3873,7 +3772,6 @@ void handleSyncNTP() {
 }
 
 void handleGetAP() {
-    lastConnectionActivity = millis();
     DynamicJsonDocument doc(256);
     doc["ap_ssid"] = sysConfig.ap_ssid;
     doc["ap_password"] = "";
@@ -3885,7 +3783,6 @@ void handleGetAP() {
 }
 
 void handleSaveAP() {
-    lastConnectionActivity = millis();
     if (!server.hasArg("plain")) { server.send(400, "application/json", "{\"success\":false,\"error\":\"No data\"}"); return; }
     StaticJsonDocument<256> doc;
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
@@ -3897,8 +3794,6 @@ void handleSaveAP() {
         ssidChanged = (strcmp(sysConfig.ap_ssid, ssid) != 0);
         strncpy(sysConfig.ap_ssid, ssid, 31);
         sysConfig.ap_ssid[31] = '\0';
-        strncpy(ap_ssid, sysConfig.ap_ssid, sizeof(ap_ssid) - 1);
-        ap_ssid[sizeof(ap_ssid) - 1] = '\0';
     }
     if (pw) {
         size_t pwLen = strlen(pw);
@@ -3906,14 +3801,11 @@ void handleSaveAP() {
             if (doc.containsKey("ap_password")) {
                 passChanged = (sysConfig.ap_password[0] != '\0');
                 sysConfig.ap_password[0] = '\0';
-                ap_password[0] = '\0';
             }
         } else if (pwLen >= 8 && pwLen <= 31) {
             passChanged = (strcmp(sysConfig.ap_password, pw) != 0);
             strncpy(sysConfig.ap_password, pw, 31);
             sysConfig.ap_password[31] = '\0';
-            strncpy(ap_password, sysConfig.ap_password, sizeof(ap_password) - 1);
-            ap_password[sizeof(ap_password) - 1] = '\0';
         } else {
             server.send(400, "application/json",
                 "{\"success\":false,\"error\":\"Password must be 8-31 characters or empty\"}");
@@ -3948,7 +3840,6 @@ void handleSaveAP() {
 }
 
 void handleGetSystem() {
-    lastConnectionActivity = millis();
     DynamicJsonDocument doc(2048);
     doc["ip"] = WiFi.localIP().toString();
     doc["ap_ip"] = WiFi.softAPIP().toString();
@@ -3967,9 +3858,7 @@ void handleGetSystem() {
     doc["browserSyncAge"] = lastBrowserSync > 0 ? (unsigned long)((millis() - lastBrowserSync) / 1000UL) : (unsigned long)0xFFFFFFFF;
     doc["rtcSyncAge"] = lastRTCDSync > 0 ? (unsigned long)((millis() - lastRTCDSync) / 1000UL) : (unsigned long)0xFFFFFFFF;
     doc["wifiConnected"] = wifiConnected;
-    doc["wifiSSID"] = sysConfig.sta_ssid;
     doc["rssi"] = wifiConnected ? (int)WiFi.RSSI() : 0;
-    doc["version"] = EEPROM_VERSION;
     doc["chipModel"] = "ESP32-38P";
     doc["mdnsHostname"] = getMDNSHostname();
     doc["mdnsStarted"] = mdnsStarted;
@@ -3989,13 +3878,11 @@ void handleGetSystem() {
 }
 
 void handleReset() {
-    lastConnectionActivity = millis();
     server.send(200, "application/json", "{\"success\":true,\"message\":\"Performing live service verification...\"}");
     healer.performTargetedRecovery();
 }
 
 void handleFactoryReset() {
-    lastConnectionActivity = millis();
     server.send(200, "application/json",
         "{\"success\":true,\"message\":\"Factory reset complete. Device will restart with default settings.\"}");
     server.client().flush();
@@ -4011,7 +3898,6 @@ void handleFactoryReset() {
 //  GPIO MANAGEMENT HANDLERS
 // =============================================================================
 void handleGetGPIOConfig() {
-    lastConnectionActivity = millis();
     DynamicJsonDocument doc(2048);
     doc["count"] = gpioConfig.count;
     doc["maxRelays"] = MAX_RELAYS;
@@ -4029,7 +3915,6 @@ void handleGetGPIOConfig() {
 }
 
 void handleSaveGPIOConfig() {
-    lastConnectionActivity = millis();
     if (!server.hasArg("plain")) { server.send(400, "application/json", "{\"success\":false,\"error\":\"No data\"}"); return; }
     StaticJsonDocument<1024> doc;
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
@@ -4117,7 +4002,6 @@ void handleSaveGPIOConfig() {
 }
 
 void handleAddGPIO() {
-    lastConnectionActivity = millis();
     if (!server.hasArg("plain")) { server.send(400, "application/json", "{\"success\":false,\"error\":\"No data\"}"); return; }
     StaticJsonDocument<128> doc;
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
@@ -4166,7 +4050,6 @@ void handleAddGPIO() {
 }
 
 void handleDeleteGPIO() {
-    lastConnectionActivity = millis();
     if (!server.hasArg("plain")) { server.send(400, "application/json", "{\"success\":false,\"error\":\"No data\"}"); return; }
     StaticJsonDocument<128> doc;
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
@@ -4202,7 +4085,6 @@ void handleDeleteGPIO() {
 }
 
 void handleToggleActiveLow() {
-    lastConnectionActivity = millis();
     if (!server.hasArg("plain")) { server.send(400, "application/json", "{\"success\":false,\"error\":\"No data\"}"); return; }
     StaticJsonDocument<128> doc;
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
@@ -4225,7 +4107,6 @@ void handleToggleActiveLow() {
 }
 
 void handleGlobalActiveMode() {
-    lastConnectionActivity = millis();
     if (!server.hasArg("plain")) { server.send(400, "application/json", "{\"success\":false,\"error\":\"No data\"}"); return; }
     StaticJsonDocument<64> doc;
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
@@ -4251,7 +4132,6 @@ void handleGlobalActiveMode() {
 //  MQTT API HANDLERS
 // =============================================================================
 void handleGetMQTT() {
-    lastConnectionActivity = millis();
     DynamicJsonDocument doc(1024);
     doc["enabled"] = mqttConfig.enabled;
     doc["connected"] = mqttConnected;
@@ -4264,14 +4144,12 @@ void handleGetMQTT() {
     doc["qos"] = mqttConfig.qos;
     doc["home_assistant"] = mqttConfig.home_assistant;
     doc["ha_prefix"] = mqttConfig.ha_prefix;
-    doc["retain_states"] = mqttConfig.retain_states;
     String resp;
     serializeJson(doc, resp);
     server.send(200, "application/json", resp);
 }
 
 void handleSaveMQTT() {
-    lastConnectionActivity = millis();
     if (!server.hasArg("plain")) { server.send(400, "application/json", "{\"success\":false,\"error\":\"No data\"}"); return; }
     DynamicJsonDocument doc(1024);
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
@@ -4351,7 +4229,6 @@ void handleSaveMQTT() {
 }
 
 void handleToggleMQTT() {
-    lastConnectionActivity = millis();
     if (!server.hasArg("plain")) { server.send(400, "application/json", "{\"success\":false,\"error\":\"No data\"}"); return; }
     StaticJsonDocument<64> doc;
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
