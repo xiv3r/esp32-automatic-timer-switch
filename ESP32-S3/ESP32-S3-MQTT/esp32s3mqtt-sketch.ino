@@ -2238,7 +2238,7 @@ const char system_html[] PROGMEM = R"raw(<!DOCTYPE html>
 <button class="btn bwarn" onclick="rst()" style="padding:9px 18px;border-radius:6px;font-size:13px;font-weight:600">&#x1F504; Verify Services</button>
 <button class="btn bdanger" onclick="fct()" style="padding:9px 18px;border-radius:6px;font-size:13px;font-weight:600">&#x26A0; Factory Reset</button>
 </div>
-<p style="color:#90A4AE;font-size:12px;margin-top:10px">Factory reset clears all the settings without restarting the device.<br>Alternatively, hold the <strong>BOOT button</strong> for 5 seconds to trigger a hardware factory reset.</p>
+<p style="color:#90A4AE;font-size:12px;margin-top:10px">Factory reset clears all the settings.<br>Alternatively, hold the <strong>BOOT button</strong> for 5 seconds to trigger a hardware factory reset.</p>
 </div>
 </main>
 <div id="toast"></div>
