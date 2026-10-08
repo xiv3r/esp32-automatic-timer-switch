@@ -83,7 +83,7 @@ esp32s3-dump-0x0.bin: 0x0
 
 # 16 Channel GPIO Connection
 ```
-16CH   |   ESP32-S3 N16R8
+2x8CH | ESP32-S3 N16R8
 VCC _____ 5V
 IN8 _____ GPIO 4  Relay 1
 IN7 _____ GPIO 5  Relay 2
@@ -93,7 +93,9 @@ IN4 _____ GPIO 11 Relay 5
 IN3 _____ GPIO 12 Relay 6
 IN2 _____ GPIO 13 Relay 7
 IN1 _____ GPIO 14 Relay 8
+GND _____ GND
 
+VCC _____ 5V
 IN1 _____ GPIO 1  Relay 9
 IN2 _____ GPIO 2  Relay 10
 IN3 _____ GPIO 42 Relay 11
