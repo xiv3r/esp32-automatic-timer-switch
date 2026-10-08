@@ -13,7 +13,6 @@
 
 # Libraries
 - ArduinoJson
-- PubSubClient
 - RTCLib 1.14.1
 
 # Installation
@@ -38,7 +37,6 @@ esp32s3-dump-0x0.bin: 0x0
 - Go to `Time settings` and tap `Sync Browser ` to set the rtc time
 
 ## Relay Naming 
-> mobile mode
 - Double click relay name to edit
 
 ## Set the Time (country)
@@ -55,15 +53,13 @@ esp32s3-dump-0x0.bin: 0x0
 - WAN:`192.168.1.123`
 - Global:`Enable Port Forwarding on your router to access anywhere`
 
-## Note
-- Disable Wifi Station Mode if you have a DS3231
-
 <details><summary>
 
 ## Isolate Relay Power
 </summary>
 
 > ⚠️ Use the Main relay power input and Avoid using VCC and GND from the relay IN GPIO Pin row
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/ESP32-S3/image/esp32s3-diagram-power.png">
 
 ### 5V Relay
 - Remove the Yellow VCC-JDVCC jumper.
@@ -110,18 +106,20 @@ GND  _____ GND
 
 # DS3231 GPIO Connection
 ```
-DS3231  |  ESP32-S3 N16R8 
-   SDA  → GPIO 8
-   SCL  → GPIO 9
-   VCC  → 3.3V
-   GND  → GND
+DS3231  |  ESP32-S3 N16R8
+VCC _____ 3.3V
+SDA _____ GPIO 8
+SCL _____ GPIO 9
+GND _____ GND
 ```
 
-<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/ESP32-S3/image/esp32s3-1.jpg">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/ESP32-S3/image/esp32s3.jpg">
 <img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/ESP32-S3/image/esp32s3-diagram.png">
-<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/ESP32-S3/image/s3-2.png">
-<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/ESP32-S3/image/s3-3.png">
-<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/ESP32-S3/image/s3-4.png">
-<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/ESP32-S3/image/s3-5.png">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/ESP32-S3/image/relay.png">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/ESP32-S3/image/wifi.png">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/ESP32-S3/image/time.png">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/ESP32-S3/image/ap.png">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/ESP32-S3/image/gpio.png">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/ESP32-S3/image/system.png">
 
 
