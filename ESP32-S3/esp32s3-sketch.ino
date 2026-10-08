@@ -1653,7 +1653,7 @@ function updateTimeStatus(d){
     rtcInfo = '<br><small>✅ DS3231 RTC detected on GPIO8/9';
     if(d.rtcSynced){
       if(d.rtcSyncAge === 4294967295 || d.rtcSyncAge < 0){
-        rtcInfo += ' | Last sync: Just now';
+        rtcInfo += ' | Last sync: Never';
       } else {
         rtcInfo += ' | Last sync: ' + d.rtcSyncAge + 's ago';
       }
@@ -2308,12 +2308,30 @@ void processNTPResponse() {
                 uint64_t candidate     = eraBase | (uint64_t)secs;
                 uint64_t candidateNext = candidate + 0x100000000ULL;
                 uint64_t candidatePrev = (eraBase >= 0x100000000ULL) ? (candidate - 0x100000000ULL) : candidate;
-                uint64_t diffCur  = (candidate     > currentNtp) ? (candidate     - currentNtp) : (currentNtp - candidate);
-                uint64_t diffNext = (candidateNext > currentNtp) ? (candidateNext - currentNtp) : (currentNtp - candidateNext);
-                uint64_t diffPrev = (candidatePrev > currentNtp) ? (candidatePrev - currentNtp) : (currentNtp - candidatePrev);
-                ntpSecs64 = candidate;
-                if (diffNext < diffCur && diffNext < diffPrev) ntpSecs64 = candidateNext;
-                else if (diffPrev < diffCur && diffPrev < diffNext) ntpSecs64 = candidatePrev;
+                uint64_t candidates[3] = { candidatePrev, candidate, candidateNext };
+                uint64_t bestNtp = 0;
+                uint64_t bestDiff = UINT64_MAX;
+                for (int ci = 0; ci < 3; ci++) {
+                    uint64_t candNtp = candidates[ci];
+                    uint64_t candUnix = candNtp - NTP_EPOCH_OFFSET;
+                    if (candNtp < NTP_EPOCH_OFFSET) continue;
+                    if (!VALID_UNIX_TIME_64(candUnix)) continue;
+                    uint64_t d = (candNtp > currentNtp) ? (candNtp - currentNtp) : (currentNtp - candNtp);
+                    if (d < bestDiff) {
+                        bestDiff = d;
+                        bestNtp = candNtp;
+                    }
+                }
+                if (bestDiff != UINT64_MAX) {
+                    ntpSecs64 = bestNtp;
+                } else {
+                    uint64_t unixEra0 = ntpSecs64 - NTP_EPOCH_OFFSET;
+                    uint64_t unixEra1 = unixEra0 + 0x100000000ULL;
+                    if (!VALID_UNIX_TIME_64(unixEra0) &&
+                        (VALID_UNIX_TIME_64(unixEra1) || secs < 0x70000000UL)) {
+                        ntpSecs64 += 0x100000000ULL;
+                    }
+                }
             } else {
                 uint64_t unixEra0 = ntpSecs64 - NTP_EPOCH_OFFSET;
                 uint64_t unixEra1 = unixEra0 + 0x100000000ULL;
