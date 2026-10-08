@@ -117,7 +117,9 @@ IN4 _____ GPIO26  Relay 5
 IN3 _____ GPIO27  Relay 6
 IN2 _____ GPIO14  Relay 7
 IN1 _____ GPIO13  Relay 8
+GND _____ GND
 
+VCC _____ 5VIN
 IN1 _____ GPIO1   Relay 9  (TX)
 IN2 _____ GPIO3   Relay 10 (RX)
 IN3 _____ GPIO19  Relay 11
