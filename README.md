@@ -78,15 +78,13 @@ esp32-dump-0x0.bin: 0x0
 - WAN:`192.168.1.123`
 - Global:`Enable Port Forwarding on your router to access anywhere`
 
-## Note
-- Disable Wifi Station Mode if you have a DS3231 RTC Module. To set the DS3231 RTC time go to Time page and tap Sync Browser.
-
 <details><summary>
 
 ## Isolate Relay Power
 </summary>
 
 > ⚠️ Use the Main relay power input and Avoid using VCC and GND from the relay IN GPIO Pin row
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/esp32-diagram-power.png">
 
 ### 5V Relay
 - Remove the Yellow VCC-JDVCC jumper.
@@ -134,19 +132,20 @@ GND  _____ GND
 ## DS3231 GPIO Connection 
 ```
 DS3231 | ESP32 38P
-VCC → 3.3V
-SDA → 21
-SCL → 22
-GND → GND
+VCC _____ 3.3V
+SDA _____ 21
+SCL _____ 22
+GND _____ GND
 ```
 
-<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/src1.png">
-<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/src2.png">
-<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/src3.png">
-<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/src4.png">
-<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/shot2.jpg">
 <img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/src5.jpg">
 <img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/esp32-diagram.png">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/relay.png">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/wifi.png">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/time.png">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/ap.png">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/gpio.png">
+<img src="https://github.com/xiv3r/esp32-automatic-timer-switch/blob/main/libraries/system.png">
 
 # Build Firmware
 >  Auto Build firmware binaries using github action
