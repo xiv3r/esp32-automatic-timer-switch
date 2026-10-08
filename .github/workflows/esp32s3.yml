@@ -31,8 +31,8 @@ jobs:
         
         # Install libraries
         arduino-cli lib install "ArduinoJson"
-        git clone --depth 1 --branch 1.14.1 https://github.com/adafruit/RTClib.git ~/Arduino/libraries/RTClib
-
+        arduino-cli lib install "RTClib"
+        
         # Compile Firmware
         cd ESP32-S3
         mv *.ino ESP32-S3.ino
