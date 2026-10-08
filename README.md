@@ -107,8 +107,8 @@ esp32-dump-0x0.bin: 0x0
 
 ## 16 CHANNEL RELAY GPIO Connection 
 ```
-RELAY  |  ESP32 30/38P
-VCC _____ 5VIN
+2x8CH  |  ESP32 30/38P
+VCC _____ 5V
 IN8 _____ GPIO23  Relay 1
 IN7 _____ GPIO32  Relay 2
 IN6 _____ GPIO33  Relay 3
@@ -119,7 +119,7 @@ IN2 _____ GPIO14  Relay 7
 IN1 _____ GPIO13  Relay 8
 GND _____ GND
 
-VCC _____ 5VIN
+VCC _____ 5V
 IN1 _____ GPIO1   Relay 9  (TX)
 IN2 _____ GPIO3   Relay 10 (RX)
 IN3 _____ GPIO19  Relay 11
@@ -133,7 +133,7 @@ GND _____ GND
 
 ## DS3231 GPIO Connection 
 ```
-DS3231 | ESP32 38P
+DS3231 |  ESP32 38P
 VCC _____ 3.3V
 SDA _____ 21
 SCL _____ 22
