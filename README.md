@@ -61,7 +61,6 @@ esp32-dump-0x0.bin: 0x0
 - Go to `Time settings` and tap `Sync Browser ` to set the rtc time
 
 ## Relay Naming 
-> mobile mode
 - Double click relay name to edit
 
 ## Set the Time (country)
