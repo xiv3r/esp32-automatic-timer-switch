@@ -4,7 +4,7 @@
 <img src="https://contrib.rocks/image?&columns=25&max=10000&&repo=xiv3r/esp32-automatic-timer-switch" alt="contributors"/></a>
 
 ## Requirements
-- ESP32 30/38P Pins
+- ESP32 38P Pins
 - DS3231 RTC Module + CR2032 battery (offline recommend)
 - 5v 1-16 Channel Relay
 - Female to Female Dupont Wire
