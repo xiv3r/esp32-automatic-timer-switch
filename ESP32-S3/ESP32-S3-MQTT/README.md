@@ -1,5 +1,11 @@
-### Download the Firmware and Flash
-https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/esp32s3-mqtt
+# Arduino Libraries
+- ArduinoJson
+- PubSubClient
+- RTClib 1.14.1
+
+# Download the Firmware and Flash
+> Flash offset address: `0x0`
+- https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/esp32s3-mqtt
 
 # 16 Channel GPIO Connection
 ```
