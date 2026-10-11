@@ -9,7 +9,7 @@
 
 ## 16 CHANNEL RELAY GPIO Connection 
 ```
-2x8CH  |  ESP32 30/38P
+2x8CH  |  ESP32 38P
 VCC _____ 5V
 IN8 _____ GPIO23  Relay 1
 IN7 _____ GPIO32  Relay 2
