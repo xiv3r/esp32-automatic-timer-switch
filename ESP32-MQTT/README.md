@@ -1,6 +1,11 @@
-### Download the Firmware and Flash
+# Arduino Libraries
+- ArduinoJson
+- PubSubClient
+- RTClib 1.14.1
 
-https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/esp32-mqtt
+# Download the Firmware and Flash
+> Flash offset address: `0x0`
+- https://github.com/xiv3r/esp32-automatic-timer-switch/releases/tag/esp32-mqtt
 
 ## 16 CHANNEL RELAY GPIO Connection 
 ```
