@@ -23,7 +23,7 @@
 Preferences preferences;
 #define NVS_NAMESPACE "relay16"
 #define EEPROM_MAGIC   0x1234
-#define EEPROM_VERSION 13
+#define EEPROM_VERSION 14
 #define EXT_CFG_MAGIC  0xEC
 #define RELAY_CONFIG_MAGIC 0x1CE5
 
@@ -49,6 +49,12 @@ static const unsigned long WIFI_CONNECT_TIMEOUT =   20000UL;
 static const unsigned long SCHEDULE_PROCESS_INTERVAL = 250UL;
 static const unsigned long RTC_REBASE_INTERVAL  =  300000UL;
 static const unsigned long DS3231_SYNC_INTERVAL =  3600000UL;
+
+// =============================================================================
+//  DST Cache Timing
+// =============================================================================
+static const unsigned long DST_CACHE_TTL_SECONDS = 5ULL;
+static const unsigned long DST_CACHE_INVALIDATE_INTERVAL = 5000UL;
 
 // =============================================================================
 //  NTP Async State Machine Constants
@@ -190,6 +196,10 @@ struct SystemConfig {
     int32_t  gmt_offset;
     int32_t  daylight_offset;
     uint64_t last_rtc_epoch;
+    char     tz_name[32];
+    uint8_t  tz_rule_id;
+    uint8_t  tz_auto_dst;
+    uint8_t  tz_reserved[2];
 } __attribute__((packed));
 
 struct ExtConfig {
@@ -201,6 +211,57 @@ struct ExtConfig {
     uint8_t sta_enabled;
     uint8_t reserved[26];
 } __attribute__((packed));
+
+// =============================================================================
+//  Timezone Rule Table
+// =============================================================================
+struct TZRule {
+    const char* name;
+    int32_t     std_offset;
+    int32_t     dst_offset;
+    uint8_t     dst_start_mon;
+    uint8_t     dst_start_wday;
+    uint8_t     dst_start_nth;
+    uint8_t     dst_start_mday;
+    uint8_t     dst_start_hour;
+    uint8_t     dst_start_min;
+    uint8_t     dst_end_mon;
+    uint8_t     dst_end_wday;
+    uint8_t     dst_end_nth;
+    uint8_t     dst_end_mday;
+    uint8_t     dst_end_hour;
+    uint8_t     dst_end_min;
+};
+
+static const TZRule TZ_TABLE[] = {
+    {"UTC",                       0,       0,     0,  0, 0xFF,   0,  0, 0,    0,  0, 0xFF,   0,  0, 0},
+    {"Asia/Manila",           28800,       0,     0,  0, 0xFF,   0,  0, 0,    0,  0, 0xFF,   0,  0, 0},
+    {"Asia/Tokyo",            32400,       0,     0,  0, 0xFF,   0,  0, 0,    0,  0, 0xFF,   0,  0, 0},
+    {"Asia/Shanghai",         28800,       0,     0,  0, 0xFF,   0,  0, 0,    0,  0, 0xFF,   0,  0, 0},
+    {"Asia/Kolkata",          19800,       0,     0,  0, 0xFF,   0,  0, 0,    0,  0, 0xFF,   0,  0, 0},
+    {"Asia/Dubai",            14400,       0,     0,  0, 0xFF,   0,  0, 0,    0,  0, 0xFF,   0,  0, 0},
+    {"Asia/Singapore",        28800,       0,     0,  0, 0xFF,   0,  0, 0,    0,  0, 0xFF,   0,  0, 0},
+    {"Asia/Hong_Kong",        28800,       0,     0,  0, 0xFF,   0,  0, 0,    0,  0, 0xFF,   0,  0, 0},
+    {"Asia/Seoul",            32400,       0,     0,  0, 0xFF,   0,  0, 0,    0,  0, 0xFF,   0,  0, 0},
+    {"Asia/Bangkok",          25200,       0,     0,  0, 0xFF,   0,  0, 0,    0,  0, 0xFF,   0,  0, 0},
+    {"Australia/Sydney",      36000,   39600,    10,  0,    1,   0,  2, 0,    4,  0,    1,   0,  3, 0},
+    {"Australia/Perth",       28800,       0,     0,  0, 0xFF,   0,  0, 0,    0,  0, 0xFF,   0,  0, 0},
+    {"Australia/Brisbane",    36000,       0,     0,  0, 0xFF,   0,  0, 0,    0,  0, 0xFF,   0,  0, 0},
+    {"Europe/London",             0,    3600,     3,  0, 0xFE,   0,  1, 0,   10,  0, 0xFE,   0,  2, 0},
+    {"Europe/Paris",           3600,    7200,     3,  0, 0xFE,   0,  2, 0,   10,  0, 0xFE,   0,  3, 0},
+    {"Europe/Berlin",          3600,    7200,     3,  0, 0xFE,   0,  2, 0,   10,  0, 0xFE,   0,  3, 0},
+    {"Europe/Moscow",         10800,       0,     0,  0, 0xFF,   0,  0, 0,    0,  0, 0xFF,   0,  0, 0},
+    {"America/New_York",     -18000,  -14400,     3,  0,    2,   0,  2, 0,   11,  0,    1,   0,  2, 0},
+    {"America/Chicago",      -21600,  -18000,     3,  0,    2,   0,  2, 0,   11,  0,    1,   0,  2, 0},
+    {"America/Denver",       -25200,  -21600,     3,  0,    2,   0,  2, 0,   11,  0,    1,   0,  2, 0},
+    {"America/Los_Angeles",  -28800,  -25200,     3,  0,    2,   0,  2, 0,   11,  0,    1,   0,  2, 0},
+    {"America/Sao_Paulo",    -10800,       0,     0,  0, 0xFF,   0,  0, 0,    0,  0, 0xFF,   0,  0, 0},
+    {"Pacific/Auckland",      43200,   46800,     9,  0, 0xFE,   0,  2, 0,    4,  0,    1,   0,  3, 0},
+    {"Pacific/Honolulu",     -36000,       0,     0,  0, 0xFF,   0,  0, 0,    0,  0, 0xFF,   0,  0, 0},
+    {"Africa/Cairo",           7200,   10800,     4,  5, 0xFE,   0,  0, 0,   10,  4, 0xFE,   0, 24, 0},
+    {"Africa/Johannesburg",    7200,       0,     0,  0, 0xFF,   0,  0, 0,    0,  0, 0xFF,   0,  0, 0},
+};
+static const uint8_t TZ_TABLE_SIZE = sizeof(TZ_TABLE) / sizeof(TZ_TABLE[0]);
 
 // =============================================================================
 //  Self-Healing
@@ -280,6 +341,13 @@ static unsigned long lastMemoryCleanup = 0;
 static unsigned long lastHeapCheck = 0;
 
 // =============================================================================
+//  DST Cache
+// =============================================================================
+static int32_t  cachedDstOffset = 0;
+static uint64_t cachedDstForEpoch = 0;
+static bool     cachedDstValid = false;
+
+// =============================================================================
 //  Self-Healing Class
 // =============================================================================
 class SelfHealingSystem {
@@ -291,7 +359,7 @@ public:
     void smartRecovery();
     void verifyRelayStates(bool force = false);
     void performTargetedRecovery();
-    void restartAPIfNeeded(bool forceRestart = false);
+    void restartAPIfNeeded(bool forceRestart);
 private:
     unsigned long lastFullHealthCheck = 0;
     unsigned long lastWiFiReconfigure = 0;
@@ -348,6 +416,9 @@ void startNTPRequest(const char* server);
 void processNTPResponse();
 void updateNTPSync();
 float getRTCTemperature();
+void invalidateDstCache();
+int32_t currentDstOffset(uint64_t utcEpoch);
+uint8_t findTzByName(const char* name);
 
 // =============================================================================
 //  64-bit Conversion Helpers
@@ -407,10 +478,116 @@ struct tm* gmtime64(uint64_t* timep) {
 }
 
 // =============================================================================
+//  Timezone Helpers
+// =============================================================================
+static uint64_t daysFromYMD(uint16_t y, uint8_t m, uint8_t d) {
+    if (m <= 2) { y -= 1; m += 12; }
+    uint64_t era = y / 400;
+    uint64_t yoe = y - era * 400;
+    uint64_t doy = (153ULL * (m - 3) + 2) / 5 + d - 1;
+    uint64_t doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    return era * 146097 + doe - 719468;
+}
+
+static uint8_t nthWeekdayOfMonth(uint16_t year, uint8_t mon0, uint8_t wday, uint8_t nth) {
+    static const uint8_t t[] = {0,3,2,5,0,3,5,1,4,6,2,4};
+    uint16_t y = year;
+    if (mon0 < 2) y -= 1;
+    uint8_t wday1 = (uint8_t)((y + y/4 - y/100 + y/400 + t[mon0] + 1) % 7);
+    uint8_t first = (uint8_t)(((wday - wday1 + 7) % 7) + 1);
+    if (nth == 0xFE) {
+        static const uint8_t mdays[] = {31,28,31,30,31,30,31,31,30,31,30,31};
+        uint8_t dim = mdays[mon0];
+        bool leap = (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0));
+        if (mon0 == 1 && leap) dim = 29;
+        uint8_t d = first;
+        while (d + 7 <= dim) d += 7;
+        return d;
+    }
+    uint8_t d = first + (nth - 1) * 7;
+    static const uint8_t mdays2[] = {31,28,31,30,31,30,31,31,30,31,30,31};
+    uint8_t dim2 = mdays2[mon0];
+    bool leap2 = (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0));
+    if (mon0 == 1 && leap2) dim2 = 29;
+    if (d > dim2) d -= 7;
+    return d;
+}
+
+static int32_t computeDstOffset(uint64_t utcEpoch, uint8_t ruleId) {
+    if (ruleId >= TZ_TABLE_SIZE) return 0;
+    const TZRule& r = TZ_TABLE[ruleId];
+    if (r.dst_offset == 0) return 0;
+
+    uint64_t localForStd = utcEpoch + (uint64_t)(int64_t)r.std_offset;
+    struct tm* p = gmtime64(&localForStd);
+    if (!p) return 0;
+    uint16_t year = (uint16_t)(p->tm_year + 1900);
+
+    uint8_t startDay = (r.dst_start_nth == 0xFF)
+        ? r.dst_start_mday
+        : nthWeekdayOfMonth(year, r.dst_start_mon - 1, r.dst_start_wday, r.dst_start_nth);
+    uint64_t startLocal = daysFromYMD(year, r.dst_start_mon, startDay) * 86400ULL
+                        + (uint64_t)r.dst_start_hour * 3600ULL
+                        + (uint64_t)r.dst_start_min * 60ULL;
+    uint64_t startUtc = startLocal - (uint64_t)(int64_t)r.std_offset;
+
+    uint8_t endDay = (r.dst_end_nth == 0xFF)
+        ? r.dst_end_mday
+        : nthWeekdayOfMonth(year, r.dst_end_mon - 1, r.dst_end_wday, r.dst_end_nth);
+    uint64_t endLocal = daysFromYMD(year, r.dst_end_mon, endDay) * 86400ULL
+                      + (uint64_t)r.dst_end_hour * 3600ULL
+                      + (uint64_t)r.dst_end_min * 60ULL;
+    uint64_t endUtc = endLocal - (uint64_t)(int64_t)r.dst_offset;
+
+    bool inDst;
+    if (startUtc < endUtc) {
+        inDst = (utcEpoch >= startUtc && utcEpoch < endUtc);
+    } else {
+        inDst = (utcEpoch >= startUtc || utcEpoch < endUtc);
+    }
+    return inDst ? (r.dst_offset - r.std_offset) : 0;
+}
+
+uint8_t findTzByName(const char* name) {
+    if (!name) return 0;
+    for (uint8_t i = 0; i < TZ_TABLE_SIZE; i++) {
+        if (strcmp(TZ_TABLE[i].name, name) == 0) return i;
+    }
+    return TZ_TABLE_SIZE;
+}
+
+void invalidateDstCache() {
+    cachedDstValid = false;
+}
+
+int32_t currentDstOffset(uint64_t utcEpoch) {
+    if (cachedDstValid && utcEpoch >= cachedDstForEpoch
+        && (utcEpoch - cachedDstForEpoch) < DST_CACHE_TTL_SECONDS) {
+        return cachedDstOffset;
+    }
+    int32_t off = 0;
+    if (sysConfig.tz_auto_dst && sysConfig.tz_rule_id < TZ_TABLE_SIZE) {
+        off = computeDstOffset(utcEpoch, sysConfig.tz_rule_id);
+    } else {
+        off = sysConfig.daylight_offset;
+    }
+    cachedDstOffset = off;
+    cachedDstForEpoch = utcEpoch;
+    cachedDstValid = true;
+    return off;
+}
+
+// =============================================================================
 //  Get Local Epoch
 // =============================================================================
 inline uint64_t getLocalEpoch(uint64_t utcEpoch) {
-    int64_t offset = (int64_t)sysConfig.gmt_offset + (int64_t)sysConfig.daylight_offset;
+    int64_t offset;
+    if (sysConfig.tz_auto_dst && sysConfig.tz_rule_id < TZ_TABLE_SIZE) {
+        const TZRule& r = TZ_TABLE[sysConfig.tz_rule_id];
+        offset = (int64_t)r.std_offset + (int64_t)currentDstOffset(utcEpoch);
+    } else {
+        offset = (int64_t)sysConfig.gmt_offset + (int64_t)sysConfig.daylight_offset;
+    }
     if (offset > 50400) offset = 50400;
     if (offset < -50400) offset = -50400;
     return utcEpoch + (uint64_t)offset;
@@ -912,11 +1089,9 @@ void performMemoryCleanup() {
 }
 
 void cleanupStaleResources() {
-    unsigned long now = millis();
     if (!scanInProgress && WiFi.scanComplete() == WIFI_SCAN_RUNNING) {
         WiFi.scanDelete();
     }
-    (void)now;
     performMemoryCleanup();
 }
 
@@ -946,7 +1121,6 @@ nav{display:flex;gap:3px;flex-wrap:wrap;flex:1}
 nav a{color:rgba(255,255,255,.8);text-decoration:none;padding:5px 8px;border-radius:5px;font-size:12px;transition:.15s}
 nav a:hover,nav a.cur{background:rgba(255,255,255,.2);color:#fff}
 .hdr-r{display:flex;align-items:center;gap:6px;margin-left:auto;font-size:12px;white-space:nowrap}
-.hdr-r #date{opacity:.8;font-size:11px}
 .dot{width:8px;height:8px;border-radius:50%;display:inline-block;background:#546E7A;flex-shrink:0}
 .g{background:#69F0AE}.r{background:#FF5252}.y{background:#FFD740}.b{background:#42A5F5}
 main{max-width:1200px;margin:0 auto;padding:16px}
@@ -1037,7 +1211,7 @@ const char index_html[] PROGMEM = R"raw(<!DOCTYPE html>
 <a href="/gpio">GPIO</a>
 <a href="/system">System</a>
 </nav>
-<div class="hdr-r"><span class="dot wd"></span><span class="dot td"></span>&nbsp;<span id="clk">--:--:--</span>&nbsp;<span id="date">--- --/--/----</span></div>
+<div class="hdr-r"><span class="dot wd"></span><span class="dot td"></span>&nbsp;<span id="clk">--:--:--</span><span id="date" style="font-size:11px;opacity:.85;margin-left:6px;white-space:nowrap">--/--/----</span></div>
 </header>
 <main>
 <p class="ptitle">Relay Controls &amp; Schedules</p>
@@ -1048,7 +1222,7 @@ const char index_html[] PROGMEM = R"raw(<!DOCTYPE html>
 const D=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function toast(m,ok=true){const t=document.getElementById('toast');t.textContent=m;t.className='show '+(ok?'ok':'er');clearTimeout(t._t);t._t=setTimeout(()=>t.className='',3000);}
-function tick(){fetch('/api/time').then(r=>r.json()).then(d=>{document.getElementById('clk').textContent=d.time||'--:--:--';const dateEl=document.getElementById('date');if(dateEl)dateEl.textContent=d.date||'--- --/--/----';const w=document.querySelector('.wd'),t=document.querySelector('.td');if(w)w.className='dot '+(d.wifi?'g':'r');if(t){let tc='y';if(d.timeSource==='ntp')tc='g';else if(d.timeSource==='browser')tc='b';else if(d.timeSource==='rtc')tc='b';else tc='y';t.className='dot '+tc;}}).catch(()=>{});}
+function tick(){fetch('/api/time').then(r=>r.json()).then(d=>{document.getElementById('clk').textContent=d.time||'--:--:--';const de=document.getElementById('date');if(de)de.textContent=(d.weekday?d.weekday+' ':'')+(d.date||'--/--/----');const w=document.querySelector('.wd'),t=document.querySelector('.td');if(w)w.className='dot '+(d.wifi?'g':'r');if(t){let tc='y';if(d.timeSource==='ntp')tc='g';else if(d.timeSource==='browser')tc='b';else if(d.timeSource==='rtc')tc='b';else tc='y';t.className='dot '+tc;}}).catch(()=>{});}
 setInterval(tick,1000);tick();
 
 const NS=8;
@@ -1366,7 +1540,7 @@ const char wifi_html[] PROGMEM = R"raw(<!DOCTYPE html>
 <a href="/gpio">GPIO</a>
 <a href="/system">System</a>
 </nav>
-<div class="hdr-r"><span class="dot wd"></span><span class="dot td"></span>&nbsp;<span id="clk">--:--:--</span>&nbsp;<span id="date">--- --/--/----</span></div>
+<div class="hdr-r"><span class="dot wd"></span><span class="dot td"></span>&nbsp;<span id="clk">--:--:--</span><span id="date" style="font-size:11px;opacity:.85;margin-left:6px;white-space:nowrap">--/--/----</span></div>
 </header>
 <main>
 <p class="ptitle">WiFi Station Settings</p>
@@ -1420,7 +1594,7 @@ const char wifi_html[] PROGMEM = R"raw(<!DOCTYPE html>
 </style>
 <script>
 function toast(m,ok=true){const t=document.getElementById('toast');t.textContent=m;t.className='show '+(ok?'ok':'er');clearTimeout(t._t);t._t=setTimeout(()=>t.className='',3000);}
-function tick(){fetch('/api/time').then(r=>r.json()).then(d=>{document.getElementById('clk').textContent=d.time||'--:--:--';const dateEl=document.getElementById('date');if(dateEl)dateEl.textContent=d.date||'--- --/--/----';const w=document.querySelector('.wd'),t=document.querySelector('.td');if(w)w.className='dot '+(d.wifi?'g':'r');if(t){let tc='y';if(d.timeSource==='ntp')tc='g';else if(d.timeSource==='browser')tc='b';else if(d.timeSource==='rtc')tc='b';else tc='y';t.className='dot '+tc;}}).catch(()=>{});}
+function tick(){fetch('/api/time').then(r=>r.json()).then(d=>{document.getElementById('clk').textContent=d.time||'--:--:--';const de=document.getElementById('date');if(de)de.textContent=(d.weekday?d.weekday+' ':'')+(d.date||'--/--/----');const w=document.querySelector('.wd'),t=document.querySelector('.td');if(w)w.className='dot '+(d.wifi?'g':'r');if(t){let tc='y';if(d.timeSource==='ntp')tc='g';else if(d.timeSource==='browser')tc='b';else if(d.timeSource==='rtc')tc='b';else tc='y';t.className='dot '+tc;}}).catch(()=>{});}
 setInterval(tick,1000);tick();
 
 function updateStaButton(enabled) {
@@ -1606,19 +1780,29 @@ const char ntp_html[] PROGMEM = R"raw(<!DOCTYPE html>
 <a href="/gpio">GPIO</a>
 <a href="/system">System</a>
 </nav>
-<div class="hdr-r"><span class="dot wd"></span><span class="dot td"></span>&nbsp;<span id="clk">--:--:--</span>&nbsp;<span id="date">--- --/--/----</span></div>
+<div class="hdr-r"><span class="dot wd"></span><span class="dot td"></span>&nbsp;<span id="clk">--:--:--</span><span id="date" style="font-size:11px;opacity:.85;margin-left:6px;white-space:nowrap">--/--/----</span></div>
 </header>
 <main>
 <p class="ptitle">Time &amp; NTP Settings</p>
 <div class="card fcrd">
 <div id="timeStatus" class="alert ai" style="display:none;margin-bottom:12px"></div>
 <div class="fg">
+<label>Timezone</label>
+<select id="tz">
+<option value="">Loading&hellip;</option>
+</select>
+<small id="tzInfo">Auto-DST handled by firmware. Transitions detected within 5 seconds.</small>
+</div>
+<div class="fg">
+<label>Manual GMT Offset (seconds)</label>
+<input type="number" id="gmt" readonly>
+<small>Read-only when a named timezone is selected. Select &quot;UTC&quot; and enter manual offset to override.</small>
+</div>
+<div class="fg">
 <label>NTP Server</label>
 <input type="text" id="srv" placeholder="time.google.com" required>
 <small>Fallbacks: time.google.com &rarr; time.windows.com &rarr; time.cloudflare.com &rarr; time.facebook.com</small>
 </div>
-<div class="fg"><label>GMT Offset (seconds)</label><input type="number" id="gmt" required></div>
-<div class="fg"><label>Daylight Saving (seconds)</label><input type="number" id="dst" value="0"></div>
 <div class="fg"><label>Auto Sync (hours, 1&ndash;24)</label><input type="number" id="shi" min="1" max="24" value="1"></div>
 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:stretch">
 <button class="btn bsave" style="flex:1;min-width:140px;margin-top:0;height:40px;padding:0 12px;background:#1565C0;color:#fff;border-radius:6px;font-size:13px;font-weight:600" onclick="save()">&#x1F4BE; Save Settings</button>
@@ -1631,7 +1815,8 @@ const char ntp_html[] PROGMEM = R"raw(<!DOCTYPE html>
 <div id="toast"></div>
 <script>
 function toast(m,ok=true){const t=document.getElementById('toast');t.textContent=m;t.className='show '+(ok?'ok':'er');clearTimeout(t._t);t._t=setTimeout(()=>t.className='',3000);}
-function tick(){fetch('/api/time').then(r=>r.json()).then(d=>{document.getElementById('clk').textContent=d.time||'--:--:--';const dateEl=document.getElementById('date');if(dateEl)dateEl.textContent=d.date||'--- --/--/----';const w=document.querySelector('.wd'),t=document.querySelector('.td');if(w)w.className='dot '+(d.wifi?'g':'r');if(t){let tc='y';if(d.timeSource==='ntp')tc='g';else if(d.timeSource==='browser')tc='b';else if(d.timeSource==='rtc')tc='b';else tc='y';t.className='dot '+tc;}updateTimeStatus(d);}).catch(()=>{});}
+function fmtOff(s){const h=Math.floor(Math.abs(s)/3600);const m=Math.floor((Math.abs(s)%3600)/60);return (s<0?'-':'+')+h+(m?':'+String(m).padStart(2,'0'):'');}
+function tick(){fetch('/api/time').then(r=>r.json()).then(d=>{document.getElementById('clk').textContent=d.time||'--:--:--';const de=document.getElementById('date');if(de)de.textContent=(d.weekday?d.weekday+' ':'')+(d.date||'--/--/----');const w=document.querySelector('.wd'),t=document.querySelector('.td');if(w)w.className='dot '+(d.wifi?'g':'r');if(t){let tc='y';if(d.timeSource==='ntp')tc='g';else if(d.timeSource==='browser')tc='b';else if(d.timeSource==='rtc')tc='b';else tc='y';t.className='dot '+tc;}updateTimeStatus(d);}).catch(()=>{});}
 function updateTimeStatus(d){
   const s=document.getElementById('timeStatus');
   s.style.display='block';
@@ -1663,26 +1848,82 @@ function updateTimeStatus(d){
   } else {
     rtcInfo = '<br><small>⚠️ DS3231 RTC not detected</small>';
   }
-  s.innerHTML=icon+' '+msg+rtcInfo;
+  let dstInfo = '';
+  if(d.tzName){
+    dstInfo = '<br><small>🌍 Timezone: <strong>' + d.tzName + '</strong>';
+    if(d.dstActive){
+      dstInfo += ' — <span style="color:#E65100;font-weight:700">DST ACTIVE</span>';
+    } else {
+      dstInfo += ' — Standard Time';
+    }
+    dstInfo += '</small>';
+  }
+  s.innerHTML=icon+' '+msg+rtcInfo+dstInfo;
   s.className='alert '+cls;
 }
 setInterval(tick,1000);tick();
-fetch('/api/ntp').then(r=>r.json()).then(d=>{
-  document.getElementById('srv').value=d.ntpServer??'time.google.com';
-  document.getElementById('gmt').value=d.gmtOffset??28800;
-  document.getElementById('dst').value=d.daylightOffset??0;
-  document.getElementById('shi').value=d.syncHours??1;
-}).catch(()=>{});
+
+let tzList = [];
+function loadTZ(){
+  fetch('/api/timezones').then(r=>r.json()).then(d=>{
+    tzList = d.timezones || [];
+    const sel = document.getElementById('tz');
+    sel.innerHTML = '';
+    tzList.forEach(z=>{
+      const o = document.createElement('option');
+      o.value = z.name;
+      o.textContent = z.name + ' (UTC' + fmtOff(z.offset) + (z.dst ? ' +DST' : '') + ')';
+      sel.appendChild(o);
+    });
+    fetch('/api/ntp').then(r=>r.json()).then(cfg=>{
+      if (cfg.tzName && !tzList.some(z => z.name === cfg.tzName)) {
+        const o = document.createElement('option');
+        o.value = cfg.tzName;
+        o.textContent = cfg.tzName + ' (' + fmtOff(cfg.gmtOffset || 0) + ')';
+        sel.appendChild(o);
+      }
+      sel.value = cfg.tzName || 'UTC';
+      document.getElementById('gmt').value = cfg.gmtOffset;
+      document.getElementById('srv').value = cfg.ntpServer || 'time.google.com';
+      document.getElementById('shi').value = cfg.syncHours || 1;
+      updateTzInfo(cfg);
+    }).catch(()=>{});
+  }).catch(()=>{
+    document.getElementById('tz').innerHTML = '<option value="UTC">UTC</option>';
+  });
+}
+function updateTzInfo(cfg){
+  const info = document.getElementById('tzInfo');
+  if(cfg.tzAutoDst){
+    info.textContent = 'Auto-DST enabled. Current DST: ' +
+      (cfg.dstActive ? 'ACTIVE (+' + (cfg.dstOffset/3600) + 'h)' : 'inactive') +
+      '. Transitions detected within 5 seconds.';
+  } else {
+    info.textContent = 'Manual offset mode. DST not applied automatically.';
+  }
+  document.getElementById('gmt').value = cfg.gmtOffset;
+}
 function save(){
   const h=parseInt(document.getElementById('shi').value);
   if(h<1||h>24){toast('Sync interval must be 1\u201324 h',false);return;}
-  fetch('/api/ntp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-    ntpServer:document.getElementById('srv').value,
-    gmtOffset:parseInt(document.getElementById('gmt').value),
-    daylightOffset:parseInt(document.getElementById('dst').value),
-    syncHours:h
-  })}).then(r=>r.json()).then(d=>{if(d.success)toast('NTP settings saved!');else toast('Failed: '+d.error,false);})
-  .catch(()=>toast('Error',false));
+  const body = {
+    ntpServer: document.getElementById('srv').value,
+    syncHours: h
+  };
+  const tzVal = document.getElementById('tz').value;
+  if(tzVal && tzVal.length > 0 && tzVal !== 'Manual'){
+    body.tzName = tzVal;
+  }
+  fetch('/api/ntp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+    .then(r=>r.json()).then(d=>{
+      if(d.success){
+        toast('NTP settings saved!');
+        loadTZ();
+        tick();
+      } else {
+        toast('Failed: '+d.error,false);
+      }
+    }).catch(()=>toast('Error',false));
 }
 function sync(){
   const b=document.getElementById('sbtn');b.disabled=true;b.textContent='Syncing\u2026';
@@ -1721,6 +1962,7 @@ function syncFromBrowser(){
     toast('Error syncing time from browser', false);
   });
 }
+loadTZ();
 </script></body></html>)raw";
 
 // =============================================================================
@@ -1739,7 +1981,7 @@ const char ap_html[] PROGMEM = R"raw(<!DOCTYPE html>
 <a href="/gpio">GPIO</a>
 <a href="/system">System</a>
 </nav>
-<div class="hdr-r"><span class="dot wd"></span><span class="dot td"></span>&nbsp;<span id="clk">--:--:--</span>&nbsp;<span id="date">--- --/--/----</span></div>
+<div class="hdr-r"><span class="dot wd"></span><span class="dot td"></span>&nbsp;<span id="clk">--:--:--</span><span id="date" style="font-size:11px;opacity:.85;margin-left:6px;white-space:nowrap">--/--/----</span></div>
 </header>
 <main>
 <p class="ptitle">Access Point Settings</p>
@@ -1771,7 +2013,7 @@ const char ap_html[] PROGMEM = R"raw(<!DOCTYPE html>
 <div id="toast"></div>
 <script>
 function toast(m,ok=true){const t=document.getElementById('toast');t.textContent=m;t.className='show '+(ok?'ok':'er');clearTimeout(t._t);t._t=setTimeout(()=>t.className='',3000);}
-function tick(){fetch('/api/time').then(r=>r.json()).then(d=>{document.getElementById('clk').textContent=d.time||'--:--:--';const dateEl=document.getElementById('date');if(dateEl)dateEl.textContent=d.date||'--- --/--/----';const w=document.querySelector('.wd'),t=document.querySelector('.td');if(w)w.className='dot '+(d.wifi?'g':'r');if(t){let tc='y';if(d.timeSource==='ntp')tc='g';else if(d.timeSource==='browser')tc='b';else if(d.timeSource==='rtc')tc='b';else tc='y';t.className='dot '+tc;}}).catch(()=>{});}
+function tick(){fetch('/api/time').then(r=>r.json()).then(d=>{document.getElementById('clk').textContent=d.time||'--:--:--';const de=document.getElementById('date');if(de)de.textContent=(d.weekday?d.weekday+' ':'')+(d.date||'--/--/----');const w=document.querySelector('.wd'),t=document.querySelector('.td');if(w)w.className='dot '+(d.wifi?'g':'r');if(t){let tc='y';if(d.timeSource==='ntp')tc='g';else if(d.timeSource==='browser')tc='b';else if(d.timeSource==='rtc')tc='b';else tc='y';t.className='dot '+tc;}}).catch(()=>{});}
 setInterval(tick,1000);tick();
 fetch('/api/ap').then(r=>r.json()).then(d=>{
   document.getElementById('ssid').value=d.ap_ssid||'';
@@ -1810,7 +2052,7 @@ const char gpio_html[] PROGMEM = R"raw(<!DOCTYPE html>
 <a href="/gpio" class="cur">GPIO</a>
 <a href="/system">System</a>
 </nav>
-<div class="hdr-r"><span class="dot wd"></span><span class="dot td"></span>&nbsp;<span id="clk">--:--:--</span>&nbsp;<span id="date">--- --/--/----</span></div>
+<div class="hdr-r"><span class="dot wd"></span><span class="dot td"></span>&nbsp;<span id="clk">--:--:--</span><span id="date" style="font-size:11px;opacity:.85;margin-left:6px;white-space:nowrap">--/--/----</span></div>
 </header>
 <main>
 <p class="ptitle">GPIO Pin Configuration</p>
@@ -1856,7 +2098,7 @@ const char gpio_html[] PROGMEM = R"raw(<!DOCTYPE html>
 <div id="toast"></div>
 <script>
 function toast(m,ok=true){const t=document.getElementById('toast');t.textContent=m;t.className='show '+(ok?'ok':'er');clearTimeout(t._t);t._t=setTimeout(()=>t.className='',3000);}
-function tick(){fetch('/api/time').then(r=>r.json()).then(d=>{document.getElementById('clk').textContent=d.time||'--:--:--';const dateEl=document.getElementById('date');if(dateEl)dateEl.textContent=d.date||'--- --/--/----';const w=document.querySelector('.wd'),t=document.querySelector('.td');if(w)w.className='dot '+(d.wifi?'g':'r');if(t){let tc='y';if(d.timeSource==='ntp')tc='g';else if(d.timeSource==='browser')tc='b';else if(d.timeSource==='rtc')tc='b';else tc='y';t.className='dot '+tc;}}).catch(()=>{});}
+function tick(){fetch('/api/time').then(r=>r.json()).then(d=>{document.getElementById('clk').textContent=d.time||'--:--:--';const de=document.getElementById('date');if(de)de.textContent=(d.weekday?d.weekday+' ':'')+(d.date||'--/--/----');const w=document.querySelector('.wd'),t=document.querySelector('.td');if(w)w.className='dot '+(d.wifi?'g':'r');if(t){let tc='y';if(d.timeSource==='ntp')tc='g';else if(d.timeSource==='browser')tc='b';else if(d.timeSource==='rtc')tc='b';else tc='y';t.className='dot '+tc;}}).catch(()=>{});}
 setInterval(tick,1000);tick();
 // change gpio
 const DEFAULT_PINS = [23,32,33,25,26,27,14,13,1,3,19,18,5,4,2,15];
@@ -2025,7 +2267,7 @@ const char system_html[] PROGMEM = R"raw(<!DOCTYPE html>
 <a href="/gpio">GPIO</a>
 <a href="/system" class="cur">System</a>
 </nav>
-<div class="hdr-r"><span class="dot wd"></span><span class="dot td"></span>&nbsp;<span id="clk">--:--:--</span>&nbsp;<span id="date">--- --/--/----</span></div>
+<div class="hdr-r"><span class="dot wd"></span><span class="dot td"></span>&nbsp;<span id="clk">--:--:--</span><span id="date" style="font-size:11px;opacity:.85;margin-left:6px;white-space:nowrap">--/--/----</span></div>
 </header>
 <main>
 <p class="ptitle">System Information &amp; Settings</p>
@@ -2036,6 +2278,8 @@ const char system_html[] PROGMEM = R"raw(<!DOCTYPE html>
 <div class="ibox"><div class="l">Uptime</div><div class="v" id="sup">&hellip;</div></div>
 <div class="ibox"><div class="l">WiFi RSSI</div><div class="v" id="srs">&hellip;</div></div>
 <div class="ibox"><div class="l">Time Source</div><div class="v" id="stsrc" style="font-size:13px">&hellip;</div></div>
+<div class="ibox"><div class="l">Timezone</div><div class="v" id="stz" style="font-size:13px">&hellip;</div></div>
+<div class="ibox"><div class="l">DST Status</div><div class="v" id="sdst" style="font-size:13px">&hellip;</div></div>
 <div class="ibox"><div class="l">UTC Epoch</div><div class="v" id="sutc" style="font-size:11px">&hellip;</div></div>
 <div class="ibox"><div class="l">NTP Last Sync</div><div class="v" id="snt">&hellip;</div></div>
 <div class="ibox"><div class="l">Last Browser Sync</div><div class="v" id="sbs">&hellip;</div></div>
@@ -2065,7 +2309,7 @@ const char system_html[] PROGMEM = R"raw(<!DOCTYPE html>
 <div id="toast"></div>
 <script>
 function toast(m,ok=true){const t=document.getElementById('toast');t.textContent=m;t.className='show '+(ok?'ok':'er');clearTimeout(t._t);t._t=setTimeout(()=>t.className='',3000);}
-function tick(){fetch('/api/time').then(r=>r.json()).then(d=>{document.getElementById('clk').textContent=d.time||'--:--:--';const dateEl=document.getElementById('date');if(dateEl)dateEl.textContent=d.date||'--- --/--/----';const w=document.querySelector('.wd'),t=document.querySelector('.td');if(w)w.className='dot '+(d.wifi?'g':'r');if(t){let tc='y';if(d.timeSource==='ntp')tc='g';else if(d.timeSource==='browser')tc='b';else if(d.timeSource==='rtc')tc='b';else tc='y';t.className='dot '+tc;}}).catch(()=>{});}
+function tick(){fetch('/api/time').then(r=>r.json()).then(d=>{document.getElementById('clk').textContent=d.time||'--:--:--';const de=document.getElementById('date');if(de)de.textContent=(d.weekday?d.weekday+' ':'')+(d.date||'--/--/----');const w=document.querySelector('.wd'),t=document.querySelector('.td');if(w)w.className='dot '+(d.wifi?'g':'r');if(t){let tc='y';if(d.timeSource==='ntp')tc='g';else if(d.timeSource==='browser')tc='b';else if(d.timeSource==='rtc')tc='b';else tc='y';t.className='dot '+tc;}}).catch(()=>{});}
 setInterval(tick,1000);tick();
 function fmtUp(s){
   const d = Math.floor(s / 86400);
@@ -2094,6 +2338,15 @@ function loadSys(){
     else tsrcStyle='color:#C62828';
     document.getElementById('stsrc').style.cssText='font-size:13px;font-weight:700;'+tsrcStyle;
     document.getElementById('stsrc').textContent=tsrc;
+    document.getElementById('stz').textContent=d.tzName||'\u2014';
+    const dstEl = document.getElementById('sdst');
+    if(d.dstActive){
+      dstEl.textContent = '🌞 ACTIVE (+' + Math.round((d.dstOffset||0)/3600*10)/10 + 'h)';
+      dstEl.style.color = '#E65100';
+    } else {
+      dstEl.textContent = '❄️ Standard';
+      dstEl.style.color = '#1565C0';
+    }
     document.getElementById('sutc').textContent=d.utcEpoch||'\u2014';
     document.getElementById('snt').textContent=d.ntpSyncAge>=0?fmtAge(d.ntpSyncAge):'Never';
     document.getElementById('sbs').textContent=d.browserSyncAge>=0?fmtAge(d.browserSyncAge):'Never';
@@ -2686,7 +2939,7 @@ void startMDNS() {
         MDNS.addServiceTxt("http", "tcp", "model", "ESP32");
         MDNS.addServiceTxt("http", "tcp", "version", "v12");
         MDNS.addServiceTxt("http", "tcp", "channels", String(gpioConfig.count).c_str());
-        MDNS.addServiceTxt("http", "tcp", "features", "monthmask,64bit");
+        MDNS.addServiceTxt("http", "tcp", "features", "monthmask,64bit,tz");
         mdnsStarted = true;
     } else {
         mdnsStarted = false;
@@ -2789,7 +3042,12 @@ void loop() {
     dnsServer.processNextRequest();
     static unsigned long lastConnectionCleanup = 0;
     static unsigned long lastHealingCheck = 0;
+    static unsigned long lastDstInvalidate = 0;
     unsigned long now = millis();
+    if (timeHasElapsed(now, lastDstInvalidate, DST_CACHE_INVALIDATE_INTERVAL)) {
+        lastDstInvalidate = now;
+        invalidateDstCache();
+    }
     if (timeHasElapsed(now, lastConnectionCleanup, 60000)) {
         lastConnectionCleanup = now;
         if (!scanInProgress) {
@@ -2935,6 +3193,12 @@ void initDefaults() {
     sysConfig.gmt_offset      = 28800;
     sysConfig.daylight_offset = 0;
     sysConfig.last_rtc_epoch  = 0;
+    strcpy(sysConfig.tz_name, "Asia/Manila");
+    sysConfig.tz_rule_id      = findTzByName("Asia/Manila");
+    if (sysConfig.tz_rule_id >= TZ_TABLE_SIZE) sysConfig.tz_rule_id = 0;
+    sysConfig.tz_auto_dst     = 1;
+    sysConfig.tz_reserved[0]  = 0;
+    sysConfig.tz_reserved[1]  = 0;
     for (int i = 0; i < MAX_RELAYS; i++) {
         initScheduleDefaults(i);
     }
@@ -3042,6 +3306,20 @@ void setupWebServer() {
     server.on("/api/ntp",      HTTP_GET,  handleGetNTP);
     server.on("/api/ntp",      HTTP_POST, handleSaveNTP);
     server.on("/api/ntp/sync", HTTP_POST, handleSyncNTP);
+    server.on("/api/timezones", HTTP_GET, []() {
+        DynamicJsonDocument doc(4096);
+        JsonArray zones = doc.createNestedArray("timezones");
+        for (uint8_t i = 0; i < TZ_TABLE_SIZE; i++) {
+            JsonObject z = zones.createNestedObject();
+            z["id"]     = i;
+            z["name"]   = TZ_TABLE[i].name;
+            z["offset"] = TZ_TABLE[i].std_offset;
+            z["dst"]    = (TZ_TABLE[i].dst_offset != 0);
+        }
+        String resp;
+        serializeJson(doc, resp);
+        server.send(200, "application/json", resp);
+    });
     server.on("/api/ap", HTTP_GET,  handleGetAP);
     server.on("/api/ap", HTTP_POST, handleSaveAP);
     server.on("/api/gpio",                  HTTP_GET,  handleGetGPIOConfig);
@@ -3268,7 +3546,8 @@ void handleRelayName() {
 
 void handleGetTime() {
     String ts = "--:--:--";
-    String ds = "--- --/--/----";
+    String ds = "--/--/----";
+    String ws = "";
     uint64_t utcEp = getCurrentEpoch();
     if (utcEp > MIN_UNIX_TIME_64) {
         uint64_t localEp = getLocalEpoch(utcEp);
@@ -3277,13 +3556,12 @@ void handleGetTime() {
             char buf[12];
             sprintf(buf, "%02d:%02d:%02d", t->tm_hour, t->tm_min, t->tm_sec);
             ts = buf;
-            static const char* WD[7] = {"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
-            char dbuf[24];
-            int wd = t->tm_wday;
-            if (wd < 0 || wd > 6) wd = 0;
-            sprintf(dbuf, "%s %02d/%02d/%04d",
-                    WD[wd], t->tm_mon + 1, t->tm_mday, t->tm_year + 1900);
+            char dbuf[13];
+            sprintf(dbuf, "%02d/%02d/%04d", t->tm_mon + 1, t->tm_mday,
+                    t->tm_year + 1900);
             ds = dbuf;
+            static const char* WD[] = {"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
+            if (t->tm_wday >= 0 && t->tm_wday <= 6) ws = WD[t->tm_wday];
         }
     }
     String timeSourceStr = "none";
@@ -3293,13 +3571,19 @@ void handleGetTime() {
     unsigned long rtcSyncAge = (lastRTCDSync > 0)
         ? (millis() - lastRTCDSync) / 1000UL
         : 0xFFFFFFFFUL;
-    String resp = "{\"time\":\"" + ts + "\",\"date\":\"" + ds + "\",\"wifi\":" +
+    int32_t dstOff = (utcEp > MIN_UNIX_TIME_64) ? currentDstOffset(utcEp) : 0;
+    bool dstOn = (dstOff != 0);
+    String tzName = String(sysConfig.tz_name);
+    String resp = "{\"time\":\"" + ts + "\",\"date\":\"" + ds + "\",\"weekday\":\"" + ws + "\",\"wifi\":" +
                   String(wifiConnected ? "true" : "false") + ",\"ntp\":" +
                   String((timeSource == TIME_SOURCE_NTP) ? "true" : "false") +
                   ",\"timeSource\":\"" + timeSourceStr +
                   "\",\"rtcPresent\":" + String(rtcPresent ? "true" : "false") +
                   ",\"rtcSynced\":" + String(rtcTimeValid ? "true" : "false") +
-                  ",\"rtcSyncAge\":" + String(rtcSyncAge) + "}";
+                  ",\"rtcSyncAge\":" + String(rtcSyncAge) +
+                  ",\"dstActive\":" + String(dstOn ? "true" : "false") +
+                  ",\"dstOffset\":" + String(dstOff) +
+                  ",\"tzName\":\"" + tzName + "\"}";
     server.send(200, "application/json", resp);
 }
 
@@ -3449,12 +3733,19 @@ void handleWiFiScanResults() {
 }
 
 void handleGetNTP() {
-    DynamicJsonDocument doc(256);
+    DynamicJsonDocument doc(512);
     doc["ntpServer"] = sysConfig.ntp_server;
     doc["gmtOffset"] = sysConfig.gmt_offset;
     doc["daylightOffset"] = sysConfig.daylight_offset;
     doc["syncHours"] = extConfig.ntp_sync_hours;
     doc["globalActiveMode"] = extConfig.global_active_mode;
+    doc["tzName"] = sysConfig.tz_name;
+    doc["tzRuleId"] = sysConfig.tz_rule_id;
+    doc["tzAutoDst"] = sysConfig.tz_auto_dst ? 1 : 0;
+    uint64_t now = getCurrentEpoch();
+    int32_t dstOff = (now > MIN_UNIX_TIME_64) ? currentDstOffset(now) : 0;
+    doc["dstOffset"] = dstOff;
+    doc["dstActive"] = (dstOff != 0);
     String resp;
     serializeJson(doc, resp);
     server.send(200, "application/json", resp);
@@ -3465,44 +3756,92 @@ void handleSaveNTP() {
         server.send(400, "application/json", "{\"success\":false,\"error\":\"No data\"}");
         return;
     }
-    StaticJsonDocument<256> doc;
+    StaticJsonDocument<384> doc;
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
     if (err) {
         server.send(400, "application/json", "{\"success\":false,\"error\":\"Bad JSON\"}");
         return;
     }
-    bool changed = false;
-    if (doc.containsKey("ntpServer")) {
+    bool hasNtpServer = doc.containsKey("ntpServer");
+    bool hasTzName    = doc.containsKey("tzName");
+    bool hasGmtOffset = doc.containsKey("gmtOffset") && !hasTzName;
+    bool hasDstOffset = doc.containsKey("daylightOffset") && !hasTzName;
+    bool hasSyncHours = doc.containsKey("syncHours");
+    if (hasNtpServer) {
         const char* srv = doc["ntpServer"];
         if (!srv || strlen(srv) == 0 || strlen(srv) >= 48) {
             server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid NTP server\"}");
             return;
         }
-        strncpy(sysConfig.ntp_server, srv, 47);
+    }
+    uint8_t newTzId = 0;
+    const char* newTzName = nullptr;
+    if (hasTzName) {
+        newTzName = doc["tzName"];
+        if (!newTzName || strlen(newTzName) == 0 || strlen(newTzName) >= 32) {
+            server.send(400, "application/json",
+                "{\"success\":false,\"error\":\"Invalid timezone name\"}");
+            return;
+        }
+        newTzId = findTzByName(newTzName);
+        if (newTzId >= TZ_TABLE_SIZE) {
+            server.send(400, "application/json",
+                "{\"success\":false,\"error\":\"Unknown timezone\"}");
+            return;
+        }
+    }
+    int32_t newGmtOffset = 0;
+    if (hasGmtOffset) {
+        newGmtOffset = doc["gmtOffset"] | 0;
+        if (newGmtOffset > 50400) newGmtOffset = 50400;
+        if (newGmtOffset < -50400) newGmtOffset = -50400;
+    }
+    int32_t newDstOffset = 0;
+    if (hasDstOffset) {
+        newDstOffset = doc["daylightOffset"] | 0;
+        if (newDstOffset > 7200) newDstOffset = 7200;
+        if (newDstOffset < -7200) newDstOffset = -7200;
+    }
+    uint8_t newSyncHours = 0;
+    if (hasSyncHours) {
+        newSyncHours = doc["syncHours"];
+        if (newSyncHours < 1 || newSyncHours > 24) {
+            server.send(400, "application/json",
+                "{\"success\":false,\"error\":\"syncHours must be 1-24\"}");
+            return;
+        }
+    }
+    bool changed = false;
+    bool tzChanged = false;
+    if (hasNtpServer) {
+        strncpy(sysConfig.ntp_server, doc["ntpServer"], 47);
         sysConfig.ntp_server[47] = '\0';
         changed = true;
     }
-    if (doc.containsKey("gmtOffset")) {
-        int32_t gmt = doc["gmtOffset"] | 0;
-        if (gmt > 50400) gmt = 50400;
-        if (gmt < -50400) gmt = -50400;
-        sysConfig.gmt_offset = gmt;
+    if (newTzName) {
+        strncpy(sysConfig.tz_name, newTzName, 31);
+        sysConfig.tz_name[31] = '\0';
+        sysConfig.tz_rule_id  = newTzId;
+        sysConfig.gmt_offset  = TZ_TABLE[newTzId].std_offset;
+        sysConfig.daylight_offset = 0;
+        sysConfig.tz_auto_dst = 1;
         changed = true;
+        tzChanged = true;
     }
-    if (doc.containsKey("daylightOffset")) {
-        int32_t dst = doc["daylightOffset"] | 0;
-        if (dst > 7200) dst = 7200;
-        if (dst < -7200) dst = -7200;
-        sysConfig.daylight_offset = dst;
+    if (hasGmtOffset) {
+        sysConfig.gmt_offset = newGmtOffset;
+        strcpy(sysConfig.tz_name, "Manual");
+        sysConfig.tz_auto_dst = 0;
         changed = true;
+        tzChanged = true;
     }
-    if (doc.containsKey("syncHours")) {
-        uint8_t h = doc["syncHours"];
-        if (h < 1 || h > 24) {
-            server.send(400, "application/json", "{\"success\":false,\"error\":\"syncHours must be 1-24\"}");
-            return;
-        }
-        extConfig.ntp_sync_hours = h;
+    if (hasDstOffset) {
+        sysConfig.daylight_offset = newDstOffset;
+        changed = true;
+        tzChanged = true;
+    }
+    if (hasSyncHours) {
+        extConfig.ntp_sync_hours = newSyncHours;
         saveExtConfig();
         changed = true;
     }
@@ -3511,7 +3850,11 @@ void handleSaveNTP() {
         return;
     }
     saveConfiguration();
-    if (doc.containsKey("ntpServer")) {
+    if (tzChanged) {
+        invalidateDstCache();
+        updateScheduleCache();
+    }
+    if (hasNtpServer) {
         ntpAsyncStage = 0;
         ntpAsyncState = NTP_STATE_IDLE;
         ntpRetryCount = 0;
@@ -3646,6 +3989,12 @@ void handleGetSystem() {
     doc["globalActiveMode"] = extConfig.global_active_mode;
     doc["rtcPresent"] = rtcPresent;
     doc["staEnabled"] = extConfig.sta_enabled ? true : false;
+    doc["tzName"] = sysConfig.tz_name;
+    doc["tzAutoDst"] = sysConfig.tz_auto_dst ? 1 : 0;
+    uint64_t nowEp = getCurrentEpoch();
+    int32_t dstOff = (nowEp > MIN_UNIX_TIME_64) ? currentDstOffset(nowEp) : 0;
+    doc["dstActive"] = (dstOff != 0);
+    doc["dstOffset"] = dstOff;
     float rtcTempVal = getRTCTemperature();
     if (isnan(rtcTempVal)) {
         doc["rtcTemp"] = nullptr;
