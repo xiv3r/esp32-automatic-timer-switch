@@ -9,7 +9,7 @@
 
 # 16 Channel GPIO Connection
 ```
-2x8CH | ESP32-S3 N16R8
+2x8CH  |  ESP32-S3 N16R8
 VCC _____ 5V
 IN8 _____ GPIO 4  Relay 1
 IN7 _____ GPIO 5  Relay 2
@@ -35,7 +35,7 @@ GND _____ GND
 
 # DS3231 GPIO Connection
 ```
-DS3231  |  ESP32-S3 N16R8
+DS3231 |  ESP32-S3 N16R8
 VCC _____ 3.3V
 SDA _____ GPIO 8
 SCL _____ GPIO 9
