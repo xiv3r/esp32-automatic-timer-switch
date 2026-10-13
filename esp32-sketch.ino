@@ -3134,8 +3134,7 @@ inline bool isSingleScheduleSlotActive(uint64_t epoch,
             if (sched.days[slot] & (1 << currentWeekday)) return true;
             return false;
         } else if (cur < stop) {
-            uint64_t checkEpoch = epoch - 86400ULL;
-            uint64_t checkLocalEpoch = getLocalEpoch(checkEpoch);
+            uint64_t checkLocalEpoch = getLocalEpoch(epoch) - 86400ULL;
             struct tm* checkDate = gmtime64(&checkLocalEpoch);
             if (!checkDate) return false;
             if (!(monthMask & (1 << checkDate->tm_mon))) return false;
