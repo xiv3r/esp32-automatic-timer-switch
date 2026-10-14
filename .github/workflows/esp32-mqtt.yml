@@ -51,7 +51,7 @@ jobs:
       run: |
         git config user.name  "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add -f ESP32-MQTT/*.bin
+        git add -f *.bin
         git commit -m "chore: update firmware binary [skip ci]" || echo "No changes to commit"
         git push
         
@@ -70,6 +70,6 @@ jobs:
       with:
         tag_name: ${{ steps.get_tag.outputs.tag_name }}
         files: |
-          ESP32-MQTT/*.bin
+          *.bin
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
