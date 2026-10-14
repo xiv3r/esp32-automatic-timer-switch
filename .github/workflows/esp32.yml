@@ -46,6 +46,14 @@ jobs:
         
         mv firmware/*.ino.merged.bin      firmware/esp32-dump-0x0.bin
         
+    - name: Commit firmware binary
+      run: |
+        git config user.name  "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add -f firmware/*.bin
+        git commit -m "chore: update firmware binary [skip ci]" || echo "No changes to commit"
+        git push
+        
     - name: Determine release tag
       id: get_tag
       run: |
