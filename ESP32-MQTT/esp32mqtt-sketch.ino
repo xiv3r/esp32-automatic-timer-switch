@@ -2893,6 +2893,9 @@ function resetDefaults() {
 loadGPIO();
 </script></body></html>)raw";
 
+// =============================================================================
+//  SYSTEM PAGE
+// =============================================================================
 const char system_html[] PROGMEM = R"raw(<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>System</title>
@@ -3208,6 +3211,9 @@ function fct(){
 }
 </script></body></html>)raw";
 
+// =============================================================================
+//  MQTT PAGE
+// =============================================================================
 const char mqtt_html[] PROGMEM = R"raw(<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>MQTT</title>
@@ -3939,7 +3945,6 @@ void startMDNS() {
         mdnsStarted = false;
     }
 }
-
 String getMDNSHostname() {
     return String(mdnsHostname);
 }
