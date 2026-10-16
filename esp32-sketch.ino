@@ -117,6 +117,8 @@ RTC_DS3231 rtc;
 bool rtcPresent = false;
 unsigned long lastRTCDSync = 0;
 bool rtcTimeValid = false;
+static uint8_t rtcFailCount = 0;
+static const uint8_t RTC_FAIL_THRESHOLD = 3;
 static float         cachedRtcTemp          = NAN;
 static unsigned long lastRtcTempRead        = 0;
 static const unsigned long RTC_TEMP_READ_INTERVAL = 10000UL;
@@ -694,6 +696,7 @@ void initRTC() {
     }
     rtcPresent = true;
     rtcTimeValid = false;
+    rtcFailCount = 0;
     if (rtc.lostPower()) {
         return;
     }
@@ -720,6 +723,10 @@ void immediateDS3231Sync() {
             rtc.adjust(dt);
             rtcTimeValid = true;
             lastRTCDSync = millis();
+            rtcFailCount = 0;
+        } else {
+            rtcPresent = false;
+            rtcTimeValid = false;
         }
     }
 }
@@ -736,10 +743,23 @@ float getRTCTemperature() {
     lastRtcTempRead = now;
     Wire.beginTransmission(0x68);
     Wire.write(0x11);
-    if (Wire.endTransmission() != 0) return cachedRtcTemp;
-    if (Wire.requestFrom((uint8_t)0x68, (uint8_t)2) != 2) {
+    if (Wire.endTransmission() != 0) {
+        if (rtcFailCount < 255) rtcFailCount++;
+        if (rtcFailCount >= RTC_FAIL_THRESHOLD) {
+            rtcPresent = false;
+            rtcTimeValid = false;
+        }
         return cachedRtcTemp;
     }
+    if (Wire.requestFrom((uint8_t)0x68, (uint8_t)2) != 2) {
+        if (rtcFailCount < 255) rtcFailCount++;
+        if (rtcFailCount >= RTC_FAIL_THRESHOLD) {
+            rtcPresent = false;
+            rtcTimeValid = false;
+        }
+        return cachedRtcTemp;
+    }
+    rtcFailCount = 0;
     int8_t  msb = (int8_t)Wire.read();
     uint8_t lsb = Wire.read();
     cachedRtcTemp = (float)msb + ((lsb >> 6) * 0.25f);
@@ -1007,7 +1027,11 @@ bool SelfHealingSystem::recoverRTC() {
     if (!rtcPresent) return false;
     Wire.begin(21, 22);
     Wire.setTimeOut(50);
-    if (!rtc.begin()) return false;
+    if (!rtc.begin()) {
+        rtcPresent = false;
+        rtcTimeValid = false;
+        return false;
+    }
     if (rtcInitialized && internalEpoch > 0) {
         DateTime dt = uint64ToRtcDateTime(internalEpoch);
         rtc.adjust(dt);
@@ -1288,9 +1312,14 @@ function tick(){
     if(w)w.className='dot '+(d.wifi?'g':'r');
     if(t){
       let tc='y';
-      if(d.timeSource==='ntp')tc='g';
-      else if(d.timeSource==='browser')tc='y';
-      else if(d.timeSource==='rtc')tc='g';
+      const auth = (typeof d.authority === 'string' && d.authority) ? d.authority : d.timeSource;
+      if(auth==='ntp'){
+        tc = (d.authorityStale === true) ? 'y' : 'g';
+      }
+      else if(auth==='browser')tc='y';
+      else if(auth==='ds3231')tc='g';
+      else if(auth==='internal_rtc')tc='y';
+      else if(auth==='rtc')tc=(d.rtcPresent === true) ? 'g' : 'y';
       else tc='y';
       t.className='dot '+tc;
     }
@@ -1900,9 +1929,14 @@ function tick(){
     if(w) w.className = 'dot ' + (d.wifi ? 'g' : 'r');
     if(t){
       let tc = 'y';
-      if(d.timeSource === 'ntp') tc = 'g';
-      else if(d.timeSource === 'browser') tc = 'y';
-      else if(d.timeSource === 'rtc') tc = 'g';
+      const auth = (typeof d.authority === 'string' && d.authority) ? d.authority : d.timeSource;
+      if(auth === 'ntp'){
+        tc = (d.authorityStale === true) ? 'y' : 'g';
+      }
+      else if(auth === 'browser') tc = 'y';
+      else if(auth === 'ds3231') tc = 'g';
+      else if(auth === 'internal_rtc') tc = 'y';
+      else if(auth === 'rtc') tc = (d.rtcPresent === true) ? 'g' : 'y';
       else tc = 'y';
       t.className = 'dot ' + tc;
     }
@@ -2276,20 +2310,39 @@ function toast(m,ok=true){const t=document.getElementById('toast');t.textContent
 let lastNtpSyncAge = -1;
 function fmtOff(s){const h=Math.floor(Math.abs(s)/3600);const m=Math.floor((Math.abs(s)%3600)/60);return (s<0?'-':'+')+h+(m?':'+String(m).padStart(2,'0'):'');}
 function tick(){
-  fetch('/api/time').then(r=>{if(!r.ok) throw new Error('HTTP '+r.status);return r.json();}).then(d=>{document.getElementById('clk').textContent=d.time||'--:--:--';const de=document.getElementById('date');if(de)de.textContent=(d.weekday?d.weekday+' ':'')+(d.date||'--/--/----');const w=document.querySelector('.wd'),t=document.querySelector('.td');if(w)w.className='dot '+(d.wifi?'g':'r');if(t){let tc='y';if(d.timeSource==='ntp')tc='g';else if(d.timeSource==='browser')tc='y';else if(d.timeSource==='rtc')tc='g';else tc='y';t.className='dot '+tc;}if(typeof d.ntpSyncAge === 'number' && d.ntpSyncAge !== 4294967295 && d.ntpSyncAge >= 0)lastNtpSyncAge=d.ntpSyncAge;updateTimeStatus(d);}).catch(()=>{});}
+  fetch('/api/time').then(r=>{if(!r.ok) throw new Error('HTTP '+r.status);return r.json();}).then(d=>{document.getElementById('clk').textContent=d.time||'--:--:--';const de=document.getElementById('date');if(de)de.textContent=(d.weekday?d.weekday+' ':'')+(d.date||'--/--/----');const w=document.querySelector('.wd'),t=document.querySelector('.td');if(w)w.className='dot '+(d.wifi?'g':'r');if(t){let tc='y';const auth=(typeof d.authority==='string'&&d.authority)?d.authority:d.timeSource;if(auth==='ntp'){tc=(d.authorityStale===true)?'y':'g';}else if(auth==='browser')tc='y';else if(auth==='ds3231')tc='g';else if(auth==='internal_rtc')tc='y';else if(auth==='rtc')tc=(d.rtcPresent===true)?'g':'y';else tc='y';t.className='dot '+tc;}if(typeof d.ntpSyncAge === 'number' && d.ntpSyncAge !== 4294967295 && d.ntpSyncAge >= 0)lastNtpSyncAge=d.ntpSyncAge;updateTimeStatus(d);}).catch(()=>{});}
 function updateTimeStatus(d){
   const s=document.getElementById('timeStatus');
   s.style.display='block';
   let icon='',msg='',cls='ai';
-  if(d.timeSource==='ntp'){
-    icon='&#x2705;';msg='Time source: <strong>NTP Server</strong> — High Accuracy';
-    cls='ai';
-  }else if(d.timeSource==='browser'){
+  const auth = (typeof d.authority === 'string' && d.authority) ? d.authority : d.timeSource;
+  const isStale = (d.authorityStale === true);
+  if(auth==='ntp'){
+    if(isStale){
+      icon='&#x26A0;&#xFE0F;';
+      msg='Time source: <strong>NTP Server</strong> — Stale, awaiting resync';
+      cls='aw';
+    }else{
+      icon='&#x2705;';msg='Time source: <strong>NTP Server</strong> — High Accuracy';
+      cls='ai';
+    }
+  }else if(auth==='browser'){
     icon='&#x1F310;';msg='Time source: <strong>Browser Sync</strong> — Moderate Accuracy';
     cls='aw';
-  }else if(d.timeSource==='rtc'){
+  }else if(auth==='ds3231'){
     icon='&#x1F4BF;';msg='Time source: <strong>DS3231 Real Time Clock</strong> — High Accuracy';
     cls='ai';
+  }else if(auth==='internal_rtc'){
+    icon='&#x1F4BF;';msg='Time source: <strong>Internal RTC (NVS)</strong> — Moderate Accuracy';
+    cls='aw';
+  }else if(auth==='rtc'){
+    if(d.rtcPresent){
+      icon='&#x1F4BF;';msg='Time source: <strong>DS3231 Real Time Clock</strong> — High Accuracy';
+      cls='ai';
+    }else{
+      icon='&#x1F4BF;';msg='Time source: <strong>Internal RTC (NVS)</strong> — Moderate Accuracy';
+      cls='aw';
+    }
   }else{
     icon='&#x26A0;&#xFE0F;';msg='Time source: <strong>None</strong> — Please sync time';
     cls='aw';
@@ -2595,9 +2648,14 @@ function tick(){
     if(w) w.className='dot '+(d.wifi?'g':'r');
     if(t){
       let tc='y';
-      if(d.timeSource==='ntp')tc='g';
-      else if(d.timeSource==='browser')tc='y';
-      else if(d.timeSource==='rtc')tc='g';
+      const auth = (typeof d.authority === 'string' && d.authority) ? d.authority : d.timeSource;
+      if(auth==='ntp'){
+        tc = (d.authorityStale === true) ? 'y' : 'g';
+      }
+      else if(auth==='browser')tc='y';
+      else if(auth==='ds3231')tc='g';
+      else if(auth==='internal_rtc')tc='y';
+      else if(auth==='rtc')tc=(d.rtcPresent === true) ? 'g' : 'y';
       else tc='y';
       t.className='dot '+tc;
     }
@@ -2643,7 +2701,6 @@ function save(){
   const clearPwEl = document.getElementById('clearPw');
   const shouldClear = !!(clearPwEl && clearPwEl.checked);
 
-  // Byte-length check for password (matches backend strlen)
   let pwBytes = pw.length;
   try { pwBytes = new TextEncoder().encode(pw).length; } catch(e) {}
 
@@ -2711,7 +2768,6 @@ function save(){
     }
     if(d.success){
       if(d.restarted){
-        // Stop the tick interval BEFORE replacing body (prevents null-ref errors)
         if(tickIntervalId !== null){ clearInterval(tickIntervalId); tickIntervalId = null; }
         toast('AP restarted \u2014 reconnect to new network', false);
         document.body.innerHTML = '<div style="text-align:center;padding:60px 20px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#EEF2F7;min-height:100vh;box-sizing:border-box">'
@@ -2814,7 +2870,7 @@ const char gpio_html[] PROGMEM = R"raw(<!DOCTYPE html>
 <div id="toast"></div>
 <script>
 function toast(m,ok=true){const t=document.getElementById('toast');t.textContent=m;t.className='show '+(ok?'ok':'er');clearTimeout(t._t);t._t=setTimeout(()=>t.className='',3000);}
-function tick(){fetch('/api/time').then(r=>{if(!r.ok) throw new Error('HTTP '+r.status);return r.json();}).then(d=>{document.getElementById('clk').textContent=d.time||'--:--:--';const de=document.getElementById('date');if(de)de.textContent=(d.weekday?d.weekday+' ':'')+(d.date||'--/--/----');const w=document.querySelector('.wd'),t=document.querySelector('.td');if(w)w.className='dot '+(d.wifi?'g':'r');if(t){let tc='y';if(d.timeSource==='ntp')tc='g';else if(d.timeSource==='browser')tc='y';else if(d.timeSource==='rtc')tc='g';else tc='y';t.className='dot '+tc;}}).catch(()=>{});}
+function tick(){fetch('/api/time').then(r=>{if(!r.ok) throw new Error('HTTP '+r.status);return r.json();}).then(d=>{document.getElementById('clk').textContent=d.time||'--:--:--';const de=document.getElementById('date');if(de)de.textContent=(d.weekday?d.weekday+' ':'')+(d.date||'--/--/----');const w=document.querySelector('.wd'),t=document.querySelector('.td');if(w)w.className='dot '+(d.wifi?'g':'r');if(t){let tc='y';const auth=(typeof d.authority==='string'&&d.authority)?d.authority:d.timeSource;if(auth==='ntp'){tc=(d.authorityStale===true)?'y':'g';}else if(auth==='browser')tc='y';else if(auth==='ds3231')tc='g';else if(auth==='internal_rtc')tc='y';else if(auth==='rtc')tc=(d.rtcPresent===true)?'g':'y';else tc='y';t.className='dot '+tc;}}).catch(()=>{});}
 setInterval(tick,1000);tick();
 // change gpio
 const DEFAULT_PINS = [23,32,33,25,26,27,14,13,1,3,19,18,5,4,2,15];
@@ -2995,7 +3051,8 @@ const char system_html[] PROGMEM = R"raw(<!DOCTYPE html>
 <div class="ibox"><div class="l">Free Heap</div><div class="v" id="shp">&hellip;</div></div>
 <div class="ibox"><div class="l">Uptime</div><div class="v" id="sup">&hellip;</div></div>
 <div class="ibox"><div class="l">WiFi RSSI</div><div class="v" id="srs">&hellip;</div></div>
-<div class="ibox"><div class="l">Time Source</div><div class="v" id="stsrc" style="font-size:13px">&hellip;</div></div>
+<div class="ibox"><div class="l">Last Sync Source</div><div class="v" id="stsrc" style="font-size:13px">&hellip;</div></div>
+<div class="ibox"><div class="l">Current Authority</div><div class="v" id="sauth" style="font-size:13px">&hellip;</div></div>
 <div class="ibox"><div class="l">Timezone</div><div class="v" id="stz" style="font-size:13px;word-break:break-word">&hellip;</div></div>
 <div class="ibox"><div class="l">DST Status</div><div class="v" id="sdst" style="font-size:13px">&hellip;</div></div>
 <div class="ibox"><div class="l">UTC Epoch</div><div class="v" id="sutc" style="font-size:11px">&hellip;</div></div>
@@ -3050,9 +3107,14 @@ function tick(){
     if(w) w.className = 'dot ' + (d.wifi ? 'g' : 'r');
     if(t){
       let tc = 'y';
-      if(d.timeSource === 'ntp') tc = 'g';
-      else if(d.timeSource === 'browser') tc = 'y';
-      else if(d.timeSource === 'rtc') tc = 'g';
+      const auth = (typeof d.authority === 'string' && d.authority) ? d.authority : d.timeSource;
+      if(auth === 'ntp'){
+        tc = (d.authorityStale === true) ? 'y' : 'g';
+      }
+      else if(auth === 'browser') tc = 'y';
+      else if(auth === 'ds3231') tc = 'g';
+      else if(auth === 'internal_rtc') tc = 'y';
+      else if(auth === 'rtc') tc = (d.rtcPresent === true) ? 'g' : 'y';
       else tc = 'y';
       t.className = 'dot ' + tc;
     }
@@ -3144,6 +3206,31 @@ function loadSys(){
       else if(tsrc === 'Internal RTC') tsrcStyle = 'color:#7B1FA2';
       tsrcEl.style.cssText = 'font-size:13px;font-weight:700;' + tsrcStyle;
       tsrcEl.textContent = tsrc;
+    }
+
+    const sauthEl = document.getElementById('sauth');
+    if(sauthEl){
+      const auth = (typeof d.authority === 'string' && d.authority) ? d.authority : '';
+      let authLabel = '—';
+      let authStyle = 'color:#C62828';
+      if(auth === 'ntp'){
+        authLabel = (d.authorityStale === true) ? 'NTP (stale)' : 'NTP';
+        authStyle = (d.authorityStale === true) ? 'color:#F9A825' : 'color:#2E7D32';
+      } else if(auth === 'browser'){
+        authLabel = 'Browser';
+        authStyle = 'color:#1565C0';
+      } else if(auth === 'ds3231'){
+        authLabel = 'DS3231';
+        authStyle = 'color:#7B1FA2';
+      } else if(auth === 'internal_rtc'){
+        authLabel = 'Internal RTC';
+        authStyle = 'color:#F9A825';
+      } else if(auth === 'none'){
+        authLabel = 'None';
+        authStyle = 'color:#C62828';
+      }
+      sauthEl.style.cssText = 'font-size:13px;font-weight:700;' + authStyle;
+      sauthEl.textContent = authLabel;
     }
 
     const stzEl = document.getElementById('stz');
@@ -3263,7 +3350,7 @@ function loadSys(){
     }
   }).catch(()=>{
     loadSys._inflight = false;
-    ['sip','sap','shp','sup','srs','stsrc','stz','sdst','sutc','snt','sbs','sns','sch','smdns','src','sgmt','sdrift','sactmode','srtc','srtcsync','srtctemp','ssyncdir','stawifi'].forEach(id=>{
+    ['sip','sap','shp','sup','srs','stsrc','sauth','stz','sdst','sutc','snt','sbs','sns','sch','smdns','src','sgmt','sdrift','sactmode','srtc','srtcsync','srtctemp','ssyncdir','stawifi'].forEach(id=>{
       const el = document.getElementById(id);
       if(el && el.textContent === '\u2026') el.textContent = '\u2014';
     });
@@ -3628,6 +3715,10 @@ void handleBrowserTimeSync() {
             rtc.adjust(dt);
             rtcTimeValid = true;
             lastRTCDSync = millis();
+        } else {
+            rtcPresent = false;
+            rtcTimeValid = false;
+            saveRTCState();
         }
     } else {
         saveRTCState();
@@ -3979,12 +4070,12 @@ void loop() {
                       !timeHasElapsed(now, lastNTPSync, getNTPInterval() * 2UL);
     if (rtcPresent && rtcTimeValid && rtcInitialized && !ntpIsFresh) {
         if (timeHasElapsed(now, lastRTCDSync, DS3231_SYNC_INTERVAL)) {
-            lastRTCDSync = now;
             if (rtc.begin()) {
                 DateTime nowDS = rtc.now();
                 if (nowDS.year() >= 2020 && nowDS.year() <= 2100) {
                     uint64_t dsEpoch = rtcDateTimeToUint64(nowDS);
                     if (VALID_UNIX_TIME_64(dsEpoch)) {
+                        lastRTCDSync = now;
                         internalEpoch = dsEpoch;
                         driftCompensation = 1.0f;
                         rtcMicrosAtLastSync = micros();
@@ -3992,6 +4083,9 @@ void loop() {
                         timeSource = TIME_SOURCE_RTC;
                     }
                 }
+            } else {
+                rtcPresent = false;
+                rtcTimeValid = false;
             }
         }
     }
@@ -4553,6 +4647,27 @@ void handleGetTime() {
     unsigned long ntpSyncAge = (lastNTPSync > 0)
         ? (millis() - lastNTPSync) / 1000UL
         : 0xFFFFFFFFUL;
+    String authorityStr = "none";
+    if (utcEp < MIN_UNIX_TIME_64) {
+        authorityStr = "none";
+    } else if (timeSource == TIME_SOURCE_NTP && lastNTPSync > 0 &&
+               !timeHasElapsed(millis(), lastNTPSync, getNTPInterval() * 2UL)) {
+        authorityStr = "ntp";
+    } else if (timeSource == TIME_SOURCE_BROWSER && lastBrowserSync > 0 &&
+               !timeHasElapsed(millis(), lastBrowserSync, 86400000UL)) {
+        authorityStr = "browser";
+    } else if (rtcPresent && rtcTimeValid) {
+        authorityStr = "ds3231";
+    } else if (rtcInitialized && internalEpoch > 0) {
+        authorityStr = "internal_rtc";
+    } else {
+        authorityStr = "none";
+    }
+    bool authorityStale = false;
+    if (authorityStr == "ntp" && ntpSyncAge != 0xFFFFFFFFUL &&
+        timeHasElapsed(millis(), lastNTPSync, getNTPInterval())) {
+        authorityStale = true;
+    }
     int32_t dstOff = (utcEp >= MIN_UNIX_TIME_64) ? currentDstOffset(utcEp) : 0;
     bool dstOn = (dstOff != 0);
     String tzName = String(sysConfig.tz_name);
@@ -4560,7 +4675,9 @@ void handleGetTime() {
                   String(wifiConnected ? "true" : "false") + ",\"ntp\":" +
                   String((timeSource == TIME_SOURCE_NTP) ? "true" : "false") +
                   ",\"timeSource\":\"" + timeSourceStr +
-                  "\",\"rtcPresent\":" + String(rtcPresent ? "true" : "false") +
+                  "\",\"authority\":\"" + authorityStr +
+                  "\",\"authorityStale\":" + String(authorityStale ? "true" : "false") +
+                  ",\"rtcPresent\":" + String(rtcPresent ? "true" : "false") +
                   ",\"rtcSynced\":" + String(rtcTimeValid ? "true" : "false") +
                   ",\"rtcSyncAge\":" + String(rtcSyncAge) +
                   ",\"ntpSyncAge\":" + String(ntpSyncAge) +
@@ -4991,6 +5108,27 @@ void handleGetSystem() {
     else if (timeSource == TIME_SOURCE_BROWSER) timeSourceStr = "Browser";
     else if (timeSource == TIME_SOURCE_RTC) timeSourceStr = rtcPresent ? "DS3231" : "Internal RTC";
     doc["timeSource"] = timeSourceStr;
+    uint64_t _authNowEp = getCurrentEpoch();
+    String authorityStr = "none";
+    bool authorityStale = false;
+    if (_authNowEp < MIN_UNIX_TIME_64) {
+        authorityStr = "none";
+    } else if (timeSource == TIME_SOURCE_NTP && lastNTPSync > 0 &&
+               !timeHasElapsed(millis(), lastNTPSync, getNTPInterval() * 2UL)) {
+        authorityStr = "ntp";
+        if (timeHasElapsed(millis(), lastNTPSync, getNTPInterval())) authorityStale = true;
+    } else if (timeSource == TIME_SOURCE_BROWSER && lastBrowserSync > 0 &&
+               !timeHasElapsed(millis(), lastBrowserSync, 86400000UL)) {
+        authorityStr = "browser";
+    } else if (rtcPresent && rtcTimeValid) {
+        authorityStr = "ds3231";
+    } else if (rtcInitialized && internalEpoch > 0) {
+        authorityStr = "internal_rtc";
+    } else {
+        authorityStr = "none";
+    }
+    doc["authority"] = authorityStr;
+    doc["authorityStale"] = authorityStale;
     if (timeSource == TIME_SOURCE_NTP) {
         doc["syncDirection"] = rtcPresent ? "NTP \u2192 RTC \u2192 DS3231" : "NTP \u2192 Internal RTC";
     } else if (timeSource == TIME_SOURCE_BROWSER) {
