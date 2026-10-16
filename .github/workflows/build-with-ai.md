@@ -24,10 +24,11 @@ arduino-cli core install esp32:esp32
 4.Install the libraries
 ```
 arduino-cli lib install "ArduinoJson"
+arduino-cli lib install "PubSubClient"
 arduino-cli lib install "RTClib"
 ```
 5.Compile the firmware
 ```
-arduino-cli compile --fqbn esp32:esp32:esp32 --clean --output-dir firmware .
+arduino-cli compile --fqbn esp32:esp32:esp32 --output-dir firmware .
 ```
 6.Then upload the 4 generated firmware for boot, partition, firmware and merged .bin to the workspace so that the user can download it directly.
