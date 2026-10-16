@@ -7,7 +7,6 @@
 ===============================================================================
 */
 
-
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <WebServer.h>
@@ -2793,6 +2792,9 @@ function resetDefaults() {
 loadGPIO();
 </script></body></html>)raw";
 
+// =============================================================================
+//  SYSTEM PAGE
+// =============================================================================
 const char system_html[] PROGMEM = R"raw(<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>System</title>
@@ -3661,7 +3663,6 @@ void startMDNS() {
         mdnsStarted = false;
     }
 }
-
 String getMDNSHostname() {
     return String(mdnsHostname);
 }
