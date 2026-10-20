@@ -1394,9 +1394,6 @@ function load(){
   if(loadInFlight) return;
   loadInFlight = true;
   const g = document.getElementById('grid');
-  if(g && (!Array.isArray(relays) || relays.length === 0)) {
-    g.innerHTML = '<div class="card" style="text-align:center;padding:40px"><p style="color:#90A4AE">&#x23F3; Loading relays...</p></div>';
-  }
   fetchWithTimeout('/api/relays').then(r=>r.json()).then(d=>{
     loadInFlight = false;
     if(!Array.isArray(d)){toast('Load error',false);if(g && (!Array.isArray(relays) || relays.length === 0))g.innerHTML='';return;}
