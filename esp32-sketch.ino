@@ -3743,7 +3743,11 @@ void handleBrowserTimeSync() {
     String resp;
     DynamicJsonDocument respDoc(512);
     respDoc["success"] = true;
-    respDoc["utc_epoch"] = (uint32_t)browserUtcEpoch;
+    {
+        char ebuf[24];
+        snprintf(ebuf, sizeof(ebuf), "%llu", (unsigned long long)browserUtcEpoch);
+        respDoc["utc_epoch"] = ebuf;
+    }
     respDoc["local_time"] = timeStr;
     respDoc["local_date"] = dateStr;
     respDoc["weekday"] = weekdayStr;
@@ -3923,7 +3927,8 @@ void startMDNS() {
         hostname.replace("_", "-");
         String clean;
         for (char c : hostname) {
-            if (isalnum(c) || c == '-') clean += c;
+            unsigned char uc = (unsigned char)c;
+            if (isalnum(uc) || uc == '-') clean += c;
         }
         if (clean.length() > 0) {
             hostname = clean;
