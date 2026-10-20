@@ -384,7 +384,7 @@ uint32_t         mqttCountRecv           = 0;
 uint32_t         mqttCountErrors         = 0;
 char             mqttActiveClientId[40]   = "";
 char             mqttActiveBaseTopic[128] = "";
-char             mqttLastError[64]        = "";
+char             mqttLastError[96]        = "";
 
 // =============================================================================
 //  Schedule Engine
@@ -3648,6 +3648,7 @@ function loadStatus(){
     if(st){
       if(!d.enabled){ st.textContent='\u274C Disabled'; st.style.color='#90A4AE'; }
       else if(d.connected){ st.textContent='\u2705 Connected'; st.style.color='#2E7D32'; }
+      else if(d.awaiting_time_sync===true){ st.textContent='\u23F3 Waiting for time sync'; st.style.color='#F9A825'; }
       else { st.textContent='\u26A0\uFE0F Retry in '+(d.next_retry_s||0)+'s'; st.style.color='#E65100'; }
     }
     const br=document.getElementById('mbroker');
@@ -4679,12 +4680,15 @@ bool mqttAttemptConnect() {
             espMqttClientSecure.setInsecure();
         } else {
             uint64_t ep = getCurrentEpoch();
-            if (ep >= MIN_UNIX_TIME_64) {
-                struct timeval tv;
-                tv.tv_sec  = (time_t)ep;
-                tv.tv_usec = 0;
-                settimeofday(&tv, nullptr);
+            if (ep < MIN_UNIX_TIME_64) {
+                snprintf(mqttLastError, sizeof(mqttLastError),
+                         "waiting for time sync (TLS needs valid clock)");
+                return false;
             }
+            struct timeval tv;
+            tv.tv_sec  = (time_t)ep;
+            tv.tv_usec = 0;
+            settimeofday(&tv, nullptr);
             espMqttClientSecure.setCACert(mqttCaCert);
         }
         mqttClient.setClient(espMqttClientSecure);
@@ -4972,7 +4976,14 @@ void mqttLoop() {
     if (!mqttClient.connected()) {
         for (int i = 0; i < MAX_RELAYS; i++) mqttPublishedState[i] = false;
         if (scanInProgress || wifiConnecting) return;   
-        if (timeHasElapsed(now, mqttLastAttempt, mqttReconnectDelay)) {
+        bool tlsNeedsClock = mqttConfig.tls_enabled &&
+                             !mqttConfig.tls_insecure &&
+                             mqttCaCert != nullptr && mqttCaCert[0] != '\0' &&
+                             getCurrentEpoch() < MIN_UNIX_TIME_64;
+        unsigned long retryAfter = tlsNeedsClock
+                                 ? MQTT_PUBLISH_POLL
+                                 : mqttReconnectDelay;
+        if (timeHasElapsed(now, mqttLastAttempt, retryAfter)) {
             mqttLastAttempt = now;
             if (mqttAttemptConnect()) {
                 mqttConnectedOnce = true;
@@ -6814,8 +6825,18 @@ void handleMQTTStatus() {
     doc["recv"]            = mqttCountRecv;
     doc["errors"]          = mqttCountErrors;
     doc["last_error"]      = mqttLastError;
-    doc["next_retry_s"]    = mqttClient.connected()
-                             ? 0 : (uint32_t)(mqttReconnectDelay / 1000UL);
+    bool awaitingTimeSync =
+        (!mqttClient.connected() &&
+         mqttConfig.tls_enabled &&
+         !mqttConfig.tls_insecure &&
+         mqttCaCert != nullptr && mqttCaCert[0] != '\0' &&
+         getCurrentEpoch() < MIN_UNIX_TIME_64);
+    unsigned long effectiveRetry = awaitingTimeSync
+                                 ? MQTT_PUBLISH_POLL
+                                 : mqttReconnectDelay;
+    doc["next_retry_s"] = mqttClient.connected()
+                          ? 0 : (uint32_t)(effectiveRetry / 1000UL);
+    doc["awaiting_time_sync"] = awaitingTimeSync;
     doc["buffer"]          = MQTT_BUFFER_SIZE;
     String resp;
     serializeJson(doc, resp);
