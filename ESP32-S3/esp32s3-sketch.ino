@@ -1181,7 +1181,7 @@ main{max-width:1200px;margin:0 auto;padding:16px}
 .ctitle{font-weight:700;font-size:15px;cursor:pointer;transition:background .15s;padding:2px 4px;border-radius:4px}
 .ctitle:hover{background:#E3F2FD;color:#1565C0}
 .badge{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
-.bon{background:#E8F5E9;color:#2E7D32}.boff{background:#FFEBEE;color:#C62828}.bman{background:#FFF3E0;color:#E65100}
+.bon{background:#E8F5E9;color:#2E7D32}.boff{background:#FFEBEE;color:#C62828}.bman{background:#FFF3E0;color:#E65100}.bman-on{background:#FFF3E0;color:#E65100;border:1px solid #FFB74D}.bman-off{background:#FBE9E7;color:#BF360C;border:1px solid #FF8A65}
 .brow{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
 .btn{border:none;padding:7px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;transition:.15s}
 .btn:hover{filter:brightness(1.1)}.btn:disabled{opacity:.5;cursor:default}
@@ -1600,8 +1600,8 @@ function render(){
       r = {state:false, manual:false, name:'Relay '+(i+1), schedules:[]};
       relays[i] = r;
     }
-    const sl = r.manual ? 'MANUAL' : r.state ? 'ON' : 'OFF';
-    const sc = r.manual ? 'bman' : r.state ? 'bon' : 'boff';
+    const sl = r.manual ? (r.state ? 'MANUAL ON' : 'MANUAL OFF') : (r.state ? 'ON' : 'OFF');
+    const sc = r.manual ? (r.state ? 'bman-on' : 'bman-off') : (r.state ? 'bon' : 'boff');
     const displayName = r.name || ('Relay '+(i+1));
     let html = `<div class="card">
 <div class="card-hdr">
