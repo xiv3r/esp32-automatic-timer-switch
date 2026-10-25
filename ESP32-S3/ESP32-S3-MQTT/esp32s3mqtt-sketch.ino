@@ -6861,4 +6861,3 @@ void handleMQTTPublish() {
     if (mqttConfig.ha_discovery) mqttDiscoveryDirty = true;
     server.send(200, "application/json", "{\"success\":true}");
 }
-
