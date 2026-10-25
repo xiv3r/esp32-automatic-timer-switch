@@ -19,7 +19,7 @@ jobs:
       run: |
         sudo apt update
         sudo apt install git wget -y
-        wget -O arduino-cli.deb https://github.com/arduino/arduino-cli/releases/download/v1.5.1/arduino-cli_1.5.1-1_amd64.deb
+        wget -O arduino-cli.deb https://github.com/xiv3r/esp32-automatic-timer-switch/releases/download/flasher/arduino-cli_1.5.2-rc.1-1_amd64.deb
         sudo dpkg -i arduino-cli.deb
         sudo apt --fix-broken install -y
         sudo dpkg --configure -a
@@ -37,7 +37,7 @@ jobs:
         # Compile Firmware
         cd ESP32-MQTT
         mv *.ino ESP32-MQTT.ino
-        arduino-cli compile --fqbn esp32:esp32:esp32 --clean --output-dir firmware .
+        arduino-cli compile --fqbn esp32:esp32:esp32 --output-dir firmware .
         
         # Rename
         rm firmware/*.ino.bin             
