@@ -37,7 +37,7 @@ jobs:
         
         # Compile firmware
         mv *.ino esp32-automatic-timer-switch.ino
-        arduino-cli compile --fqbn esp32:esp32:esp32:FlashSize=4M,PartitionScheme=no_ota --output-dir firmware .
+        arduino-cli compile --fqbn esp32:esp32:esp32:PartitionScheme=noota_ffat --output-dir firmware .
         
         # Rename
         rm firmware/*.ino.bin             
