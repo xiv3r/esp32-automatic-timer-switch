@@ -807,6 +807,7 @@ void immediateDS3231Sync() {
         } else {
             rtcPresent = false;
             rtcTimeValid = false;
+            saveRTCState();
         }
     }
 }
@@ -1103,7 +1104,6 @@ void SelfHealingSystem::restartAPIfNeeded(bool forceRestart) {
 //  Recovery Functions
 // =============================================================================
 bool SelfHealingSystem::recoverRTC() {
-    if (!rtcPresent) return false;
     Wire.begin(8, 9);
     Wire.setTimeOut(50);
     if (!rtc.begin()) {
@@ -1111,6 +1111,8 @@ bool SelfHealingSystem::recoverRTC() {
         rtcTimeValid = false;
         return false;
     }
+    rtcPresent = true;
+    rtcFailCount = 0;
     if (rtcInitialized && internalEpoch > 0) {
         DateTime dt = uint64ToRtcDateTime(internalEpoch);
         rtc.adjust(dt);
@@ -1198,6 +1200,11 @@ void SelfHealingSystem::smartRecovery() {
         if (mdnsStarted) {
             MDNS.addService("http", "tcp", 80);
         }
+    }
+    static unsigned long lastRtcRecoveryAttempt = 0;
+    if (!rtcPresent && timeHasElapsed(now, lastRtcRecoveryAttempt, 300000UL)) {
+        lastRtcRecoveryAttempt = now;
+        recoverRTC();
     }
     verifyRelayStates();
     liveReconfigureAP();
