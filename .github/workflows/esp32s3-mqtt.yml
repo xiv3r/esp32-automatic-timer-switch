@@ -39,7 +39,11 @@ jobs:
         mv *.ino ESP32-S3-MQTT.ino
         arduino-cli compile --fqbn esp32:esp32:esp32s3:FlashSize=16M,PSRAM=opi,PartitionScheme=app3M_fat9M_16MB --output-dir firmware .
 
-        # Rename    
+        # Rename
+        rm firmware/*.ino.bin             
+        rm firmware/*.ino.bootloader.bin  
+        rm firmware/*.ino.partitions.bin
+        
         mv firmware/*.ino.merged.bin      firmware/esp32s3mqtt-dump-0x0.bin
         mv firmware/*.bin .
         
