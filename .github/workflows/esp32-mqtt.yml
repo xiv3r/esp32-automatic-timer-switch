@@ -40,10 +40,6 @@ jobs:
         arduino-cli compile --fqbn esp32:esp32:esp32:PartitionScheme=noota_ffat --output-dir firmware .
         
         # Rename
-        rm firmware/*.ino.bin             
-        rm firmware/*.ino.bootloader.bin  
-        rm firmware/*.ino.partitions.bin
-        
         mv firmware/*.ino.merged.bin      firmware/esp32mqtt-dump-0x0.bin
         mv firmware/*.bin .
         
