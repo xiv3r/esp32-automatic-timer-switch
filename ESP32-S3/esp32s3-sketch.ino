@@ -5542,4 +5542,3 @@ void handleGlobalActiveMode() {
     server.send(200, "application/json",
         "{\"success\":true,\"mode\":" + String(mode) + "}");
 }
-
