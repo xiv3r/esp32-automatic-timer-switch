@@ -6,39 +6,43 @@ on:
       - main
     paths:
       - 'ESP32-S3/ESP32-S3-MQTT/*.ino'
-    
+      
+permissions:
+  contents: write
+
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v5
 
     - name: Install Arduino-cli
       run: |
+        # Arduino-Cli Debian package
         sudo apt update
         sudo apt install git wget -y
-        wget -O arduino-cli.deb https://github.com/xiv3r/esp32-automatic-timer-switch/releases/download/flasher/arduino-cli_1.5.2-rc.1-1_amd64.deb
+        wget -O arduino-cli.deb https://github.com/arduino/arduino-cli/releases/download/v1.5.1/arduino-cli_1.5.1-1_amd64.deb
         sudo dpkg -i arduino-cli.deb
         sudo apt --fix-broken install -y
         sudo dpkg --configure -a
-        
+
         arduino-cli config init
         arduino-cli config add board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
         arduino-cli core update-index
         arduino-cli core install esp32:esp32
-        
+
         # Install libraries
         arduino-cli lib install "ArduinoJson"
         arduino-cli lib install "PubSubClient"
         arduino-cli lib install "RTClib"
-        
-        # Compile Firmware
-        cd ESP32-S3/ESP32-S3-MQTT
-        mv *.ino ESP32-S3-MQTT.ino
-        arduino-cli compile --fqbn esp32:esp32:esp32s3:FlashSize=16M,PSRAM=opi,PartitionScheme=app3M_fat9M_16MB --output-dir firmware .
 
+        # Compile firmware
+        cd ESP32-S3/ESP32-S3-MQTT
+        mv *.ino ESP32-S3/ESP32-S3-MQTT.ino
+        arduino-cli compile --fqbn esp32:esp32:esp32s3:FlashSize=16M,PSRAM=opi,PartitionScheme=app3M_fat9M_16MB --output-dir firmware .
+        
         # Rename
         rm firmware/*.ino.bin             
         rm firmware/*.ino.bootloader.bin  
@@ -46,16 +50,16 @@ jobs:
         
         mv firmware/*.ino.merged.bin      firmware/esp32s3mqtt-dump-0x0.bin
         mv firmware/*.bin .
-        
+
     - name: Commit firmware binary
       run: |
         git config user.name  "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
+        git pull --rebase --autostash origin main
         git add -f ESP32-S3/ESP32-S3-MQTT/*.bin
         git commit -m "chore: update firmware binary [skip ci]" || echo "No changes to commit"
-        git pull --rebase --autostash origin main
-        git push
-        
+        git push origin HEAD:main
+
     - name: Determine release tag
       id: get_tag
       run: |
@@ -70,7 +74,8 @@ jobs:
       uses: softprops/action-gh-release@v3
       with:
         tag_name: ${{ steps.get_tag.outputs.tag_name }}
+        make_latest: true
         files: |
-          ESP32-S3/ESP32-S3-MQTT/*.bin
+            ESP32-S3/ESP32-S3-MQTT/*.bin
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
