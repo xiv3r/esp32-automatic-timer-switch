@@ -698,6 +698,10 @@ void initRTC() {
     rtcTimeValid = false;
     rtcFailCount = 0;
     if (rtc.lostPower()) {
+        Wire.beginTransmission(0x68);
+        Wire.write(0x0F);
+        Wire.write(0x00);
+        Wire.endTransmission();
         return;
     }
     DateTime now = rtc.now();
@@ -1042,6 +1046,10 @@ bool SelfHealingSystem::recoverRTC() {
         return true;
     }
     if (rtc.lostPower()) {
+        Wire.beginTransmission(0x68);
+        Wire.write(0x0F);
+        Wire.write(0x00);
+        Wire.endTransmission();
         return false;
     }
     DateTime now = rtc.now();
@@ -4413,8 +4421,12 @@ void handleGetRelays() {
                 sch["monthMask"] = relayConfigs[i].schedule.monthMask[s];
             }
             String chunk;
-            serializeJson(relayDoc, chunk);
-            server.sendContent(chunk);
+            size_t written = serializeJson(relayDoc, chunk);
+            if (written == 0) {
+                server.sendContent("{}");
+            } else {
+                server.sendContent(chunk);
+            }
             yield();
         }
     }
@@ -5498,6 +5510,11 @@ void handleToggleActiveLow() {
     uint8_t index = doc["index"];
     if (index >= gpioConfig.count) {
         server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid index\"}");
+        return;
+    }
+    if (extConfig.global_active_mode != 0) {
+        server.send(400, "application/json",
+            "{\"success\":false,\"error\":\"Per-relay active level is overridden by global mode\"}");
         return;
     }
     bool logicalState = lastRelayOutputs[index];
