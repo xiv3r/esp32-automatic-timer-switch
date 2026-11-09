@@ -3001,7 +3001,8 @@ function renderGPIOPins(d) {
     }
     
     for(let i=0; i<d.count; i++) {
-        const activeLow = d.activeLow ? d.activeLow[i] : true;
+        const storedActiveLow = d.activeLow ? d.activeLow[i] : true;
+        const activeLow = isGlobalMode ? (globalMode === 1) : storedActiveLow;
         pinsHtml += `<div style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #E3E8EF;border-radius:7px;margin-bottom:6px;background:#FAFAFA">
             <span style="font-weight:700;min-width:60px">Relay ${i+1}</span>
             <span style="flex:1">GPIO <strong>${d.pins[i]}</strong></span>
@@ -4171,13 +4172,42 @@ inline bool isSingleScheduleSlotActive(uint64_t epoch,
             if (sched.days[slot] & (1 << currentWeekday)) return true;
             return false;
         } else if (cur < stop) {
-            uint64_t prevUtcEpoch = epoch - 86400ULL;
-            uint64_t checkLocalEpoch = getLocalEpoch(prevUtcEpoch);
-            struct tm* checkDate = gmtime64(&checkLocalEpoch);
-            if (!checkDate) return false;
-            if (!(monthMask & (1 << checkDate->tm_mon))) return false;
-            if (!(monthDayMask & (1 << (checkDate->tm_mday - 1)))) return false;
-            if (sched.days[slot] & (1 << checkDate->tm_wday)) return true;
+            uint64_t todayLocal = getLocalEpoch(epoch);
+            struct tm* todayTm = gmtime64(&todayLocal);
+            if (!todayTm) return false;
+            int todayY   = todayTm->tm_year;
+            int todayMon = todayTm->tm_mon;
+            int todayDay = todayTm->tm_mday;
+
+            const int32_t kOffsetCandidates[3] = { -86400, -82800, -90000 };
+            bool foundPrev = false;
+            struct tm prevTmCopy;
+            memset(&prevTmCopy, 0, sizeof(prevTmCopy));
+            for (uint8_t oi = 0; oi < 3; oi++) {
+                int64_t candUtc = (int64_t)epoch + (int64_t)kOffsetCandidates[oi];
+                if (candUtc <= 0) continue;
+                uint64_t candLocalEpoch = getLocalEpoch((uint64_t)candUtc);
+                struct tm* candTm = gmtime64(&candLocalEpoch);
+                if (!candTm) continue;
+                int64_t daysToday = (int64_t)daysFromYMD(
+                    (uint16_t)(todayY + 1900),
+                    (uint8_t)(todayMon + 1),
+                    (uint8_t)todayDay);
+                int64_t daysCand = (int64_t)daysFromYMD(
+                    (uint16_t)(candTm->tm_year + 1900),
+                    (uint8_t)(candTm->tm_mon + 1),
+                    (uint8_t)candTm->tm_mday);
+                if (daysToday - daysCand == 1) {
+                    prevTmCopy = *candTm;
+                    foundPrev = true;
+                    break;
+                }
+            }
+            if (!foundPrev) return false;
+
+            if (!(monthMask & (1 << prevTmCopy.tm_mon))) return false;
+            if (!(monthDayMask & (1 << (prevTmCopy.tm_mday - 1)))) return false;
+            if (sched.days[slot] & (1 << prevTmCopy.tm_wday)) return true;
             return false;
         } else {
             return false;
