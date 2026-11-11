@@ -5353,17 +5353,10 @@ void initDefaults() {
     for (int i = 0; i < MAX_RELAYS; i++) {
         initScheduleDefaults(i);
     }
-    gpioConfig.count = 16;
-    gpioConfig.magic = GPIO_CONFIG_MAGIC;
-    memcpy(gpioConfig.pins, DEFAULT_RELAY_PINS, sizeof(uint8_t) * 16);
-    for (int i = 0; i < MAX_RELAYS; i++) {
-        gpioConfig.activeLow[i] = true;
-    }
     timeSource = TIME_SOURCE_NONE;
     lastBrowserSync = 0;
     driftCompensation = 1.0f;
     saveConfiguration();
-    saveGPIOConfig();
 }
 
 void loadConfiguration() {
