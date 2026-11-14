@@ -385,6 +385,7 @@ void autoSaveInternalRTC();
 void saveRTCState();
 void loadRTCState();
 bool loadRTCFromDS3231();
+static inline void rtcAnchorSet(uint64_t epoch, uint32_t microsAtAnchor);
 void performRTCReabase();
 uint64_t getCurrentEpoch();
 void immediateDS3231Sync();
@@ -716,10 +717,8 @@ void initRTC() {
         uint64_t rtcEpoch = rtcDateTimeToUint64(now);
         if (VALID_UNIX_TIME_64(rtcEpoch)) {
             rtcTimeValid = true;
-            internalEpoch = rtcEpoch;
             driftCompensation = 1.0f;
-            rtcMicrosAtLastSync = micros();
-            lastRTCRebase = millis();
+            rtcAnchorSet(rtcEpoch, (uint32_t)micros());
             lastRTCDSync = millis();
             rtcInitialized = true;
             timeSource = TIME_SOURCE_RTC;
@@ -781,55 +780,48 @@ float getRTCTemperature() {
 // =============================================================================
 //  Enhanced RTC Functions
 // =============================================================================
+static inline void rtcAnchorSet(uint64_t epoch, uint32_t microsAtAnchor) {
+    internalEpoch       = epoch;
+    rtcMicrosAtLastSync = microsAtAnchor;
+    lastRTCRebase       = millis();
+}
+
 void performRTCReabase() {
-    unsigned long currentMicros = micros();
-    unsigned long currentMillis = millis();
-    if (rtcInitialized && internalEpoch > 0) {
-        unsigned long elapsedMicros;
-        if (currentMicros >= rtcMicrosAtLastSync) {
-            elapsedMicros = currentMicros - rtcMicrosAtLastSync;
-        } else {
-            elapsedMicros = (0xFFFFFFFF - rtcMicrosAtLastSync) + currentMicros + 1;
-        }
-        float driftSafe = driftCompensation;
-        if (driftSafe < 0.9f) driftSafe = 0.9f;
-        if (driftSafe > 1.1f) driftSafe = 1.1f;
-        double elapsedSeconds = (double)elapsedMicros / 1000000.0;
-        double adjustedSeconds = elapsedSeconds * (double)driftSafe;
-        uint64_t secondsToAdd = (uint64_t)adjustedSeconds;
-        internalEpoch += secondsToAdd;
-        unsigned long committedMicros = (unsigned long)(((uint64_t)((double)secondsToAdd * 1000000.0 / (double)driftSafe)) & 0xFFFFFFFFULL);
-        rtcMicrosAtLastSync = (rtcMicrosAtLastSync + committedMicros) & 0xFFFFFFFFUL;
-        lastRTCRebase = currentMillis;
+    uint32_t nowMicros = (uint32_t)micros();
+    if (!rtcInitialized || internalEpoch == 0) {
+        rtcAnchorSet(internalEpoch, nowMicros);
         return;
     }
-    rtcMicrosAtLastSync = currentMicros;
-    lastRTCRebase = currentMillis;
+    uint32_t elapsed = nowMicros - rtcMicrosAtLastSync;
+    float driftSafe = driftCompensation;
+    if (driftSafe < 0.9f) driftSafe = 0.9f;
+    if (driftSafe > 1.1f) driftSafe = 1.1f;
+    uint64_t whole = (uint64_t)(((double)elapsed / 1000000.0) * (double)driftSafe);
+    if (whole == 0) {
+        lastRTCRebase = millis();
+        return;
+    }
+    uint64_t consumedMicros = (uint64_t)(((double)whole * 1000000.0) / (double)driftSafe);
+    internalEpoch      += whole;
+    rtcMicrosAtLastSync = (uint32_t)(rtcMicrosAtLastSync + (uint32_t)consumedMicros);
+    lastRTCRebase       = millis();
 }
 
 uint64_t getCurrentEpoch() {
     if (rtcInitialized && internalEpoch > 0) {
-        unsigned long currentMicros = micros();
-        unsigned long currentMillis = millis();
-        if (lastRTCRebase == 0 || timeHasElapsed(currentMillis, lastRTCRebase, RTC_REBASE_INTERVAL)) {
+        uint32_t nowMicros = (uint32_t)micros();
+        if (lastRTCRebase == 0 ||
+            timeHasElapsed(millis(), lastRTCRebase, RTC_REBASE_INTERVAL)) {
             performRTCReabase();
-            currentMicros = micros();
+            nowMicros = (uint32_t)micros();
         }
-        unsigned long elapsedMicros;
-        if (currentMicros >= rtcMicrosAtLastSync) {
-            elapsedMicros = currentMicros - rtcMicrosAtLastSync;
-        } else {
-            performRTCReabase();
-            return internalEpoch;
-        }
+        uint32_t elapsedMicros = nowMicros - rtcMicrosAtLastSync;
         float driftSafe = driftCompensation;
         if (driftSafe < 0.9f) driftSafe = 0.9f;
         if (driftSafe > 1.1f) driftSafe = 1.1f;
         double elapsedSeconds = (double)elapsedMicros / 1000000.0;
-        double adjustedSeconds = elapsedSeconds * (double)driftSafe;
-        uint64_t secondsToAdd = (uint64_t)adjustedSeconds; 
-        uint64_t result = internalEpoch + secondsToAdd;
-        return result;
+        uint64_t secondsToAdd = (uint64_t)(elapsedSeconds * (double)driftSafe);
+        return internalEpoch + secondsToAdd;
     }
     if (rtcPresent && rtcTimeValid) {
         DateTime now = rtc.now();
@@ -851,12 +843,10 @@ void saveRTCState() {
 
 void loadRTCState() {
     if (VALID_UNIX_TIME_64(sysConfig.last_rtc_epoch)) {
-        internalEpoch            = sysConfig.last_rtc_epoch;
-        driftCompensation        = 1.0f;
-        rtcMicrosAtLastSync      = micros();
-        lastRTCRebase            = millis();
-        rtcInitialized           = true;
-        timeSource               = TIME_SOURCE_RTC;
+        driftCompensation = 1.0f;
+        rtcAnchorSet(sysConfig.last_rtc_epoch, (uint32_t)micros());
+        rtcInitialized = true;
+        timeSource     = TIME_SOURCE_RTC;
     }
 }
 
@@ -886,10 +876,8 @@ bool loadRTCFromDS3231() {
         if (now.year() >= 2020 && now.year() <= 2100) {
             uint64_t rtcEpoch = rtcDateTimeToUint64(now);
             if (VALID_UNIX_TIME_64(rtcEpoch)) {
-                internalEpoch = rtcEpoch;
                 driftCompensation = 1.0f;
-                rtcMicrosAtLastSync = micros();
-                lastRTCRebase = millis();
+                rtcAnchorSet(rtcEpoch, (uint32_t)micros());
                 lastRTCDSync = millis();
                 rtcInitialized = true;
                 timeSource = TIME_SOURCE_RTC;
@@ -1064,10 +1052,8 @@ bool SelfHealingSystem::recoverRTC() {
         uint64_t rtcEpoch = rtcDateTimeToUint64(now);
         if (VALID_UNIX_TIME_64(rtcEpoch)) {
             rtcTimeValid = true;
-            internalEpoch = rtcEpoch;
             driftCompensation = 1.0f;
-            rtcMicrosAtLastSync = micros();
-            lastRTCRebase = millis();
+            rtcAnchorSet(rtcEpoch, (uint32_t)micros());
             rtcInitialized = true;
             timeSource = TIME_SOURCE_RTC;
             return true;
@@ -3478,9 +3464,7 @@ void syncInternalRTC(uint64_t rawUtcEpoch, uint8_t source) {
     if (!VALID_UNIX_TIME_64(rawUtcEpoch)) return;
     unsigned long nowMicros = micros();
     unsigned long nowMillis = millis();
-    internalEpoch = rawUtcEpoch;
-    rtcMicrosAtLastSync = nowMicros;
-    lastRTCRebase = nowMillis;
+    rtcAnchorSet(rawUtcEpoch, (uint32_t)nowMicros);
     rtcInitialized = true;
     if (source == TIME_SOURCE_BROWSER) {
         lastBrowserSync = nowMillis;
@@ -4130,10 +4114,8 @@ void loop() {
                     uint64_t dsEpoch = rtcDateTimeToUint64(nowDS);
                     if (VALID_UNIX_TIME_64(dsEpoch)) {
                         lastRTCDSync = now;
-                        internalEpoch = dsEpoch;
                         driftCompensation = 1.0f;
-                        rtcMicrosAtLastSync = micros();
-                        lastRTCRebase = millis();
+                        rtcAnchorSet(dsEpoch, (uint32_t)micros());
                         timeSource = TIME_SOURCE_RTC;
                     }
                 }
