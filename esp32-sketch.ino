@@ -3052,7 +3052,6 @@ const char system_html[] PROGMEM = R"raw(<!DOCTYPE html>
 </div>
 
 <div class="card fcrd">
-<p style="font-weight:700;margin-bottom:12px">Device Control</p>
 <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
 <button class="btn bwarn" onclick="rst()" style="padding:9px 18px;border-radius:6px;font-size:13px;font-weight:600">&#x1F504; Verify Services</button>
 <button class="btn bdanger" onclick="fct()" style="padding:9px 18px;border-radius:6px;font-size:13px;font-weight:600">&#x26A0; Factory Reset</button>
