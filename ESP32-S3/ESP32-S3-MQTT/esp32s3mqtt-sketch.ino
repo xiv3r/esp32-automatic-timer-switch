@@ -171,7 +171,6 @@ const byte       DNS_PORT = 53;
 //  Relay Config
 // =============================================================================
 #define MAX_RELAYS 16
-// change gpio
 const uint8_t DEFAULT_RELAY_PINS[] = {4, 5, 6, 7, 11, 12, 13, 14, 1, 2, 42, 41, 47, 21, 20, 19};
 
 // =============================================================================
@@ -197,7 +196,6 @@ struct TimerSchedule {
     uint32_t monthDays[8];
     uint16_t monthMask[8];
 };
-
 struct RelayConfig {
     TimerSchedule schedule;
     bool          manualOverride;
@@ -205,7 +203,6 @@ struct RelayConfig {
     char          name[16];
     uint16_t      magic;
 };
-
 struct SystemConfig {
     uint16_t magic;
     uint8_t  version;
@@ -222,7 +219,6 @@ struct SystemConfig {
     uint8_t  tz_auto_dst;
     uint8_t  tz_reserved[2];
 } __attribute__((packed));
-
 struct ExtConfig {
     uint8_t magic;
     uint8_t ap_channel;
@@ -232,7 +228,6 @@ struct ExtConfig {
     uint8_t sta_enabled;
     uint8_t reserved[26];
 } __attribute__((packed));
-
 struct MqttConfig {
     uint16_t magic;
     uint8_t  version;
@@ -316,24 +311,16 @@ SystemConfig sysConfig;
 ExtConfig    extConfig;
 RelayConfig  relayConfigs[MAX_RELAYS];
 HealthMetrics health;
-
-// RTC
 uint64_t      internalEpoch            = 0;
 float         driftCompensation        = 1.0f;
 bool          rtcInitialized           = false;
 unsigned long rtcMicrosAtLastSync      = 0;
 unsigned long lastRTCRebase            = 0;
-
-// RTC Auto-Save
 static unsigned long lastInternalRTCSave = 0;
 static const unsigned long INTERNAL_RTC_SAVE_INTERVAL = 3600000UL;
-
-// NTP
 uint8_t       ntpFailCount    = 0;
 unsigned long lastNTPSync     = 0;
 unsigned long lastNTPAttempt  = 0;
-
-// NTP Async
 static uint8_t  ntpAsyncState = NTP_STATE_IDLE;
 static unsigned long ntpAsyncPhaseStart = 0;
 static WiFiUDP  ntpUDP;
@@ -342,8 +329,6 @@ static bool     ntpReceived = false;
 static uint64_t ntpResult = 0;
 static uint8_t  ntpRetryCount = 0;
 static uint8_t  ntpAsyncStage = 0;
-
-// WiFi
 bool          wifiConnected         = false;
 unsigned long lastWiFiCheck         = 0;
 uint8_t       wifiReconnectAttempts = 0;
@@ -351,17 +336,11 @@ unsigned long wifiGiveUpUntil       = 0;
 static const uint8_t MAX_RECONNECT  = 10;
 bool          wifiConnecting        = false;
 unsigned long wifiConnectStart      = 0;
-
-// WiFi Scan
 volatile bool scanInProgress  = false;
 volatile int  scanResultCount = -1;
 unsigned long scanStartTime   = 0;
-
-// mDNS
 bool          mdnsStarted           = false;
 char          mdnsHostname[32]      = MDNS_HOSTNAME_DEFAULT;
-
-// MQTT
 MqttConfig       mqttConfig;
 WiFiClient       espMqttClientPlain;
 WiFiClientSecure espMqttClientSecure;
@@ -2388,7 +2367,6 @@ const char ntp_html[] PROGMEM = R"raw(<!DOCTYPE html>
 <button class="btn bsync" id="sbtn" style="flex:1;min-width:120px;margin-top:0;height:40px;padding:0 12px;background:#1565C0;color:#fff;border-radius:6px;font-size:13px;font-weight:600;white-space:nowrap" onclick="sync()">&#x1F504; Sync NTP</button>
 <button class="btn bwarn" id="bsbtn" style="flex:1;min-width:130px;margin-top:0;height:40px;padding:0 12px;background:#1565C0;color:#fff;border-radius:6px;font-size:13px;font-weight:600;white-space:nowrap" onclick="syncFromBrowser()">&#x1F310; Sync Browser</button>
 </div>
-<small style="display:block;margin-top:12px;color:#90A4AE">Use <strong>Sync Browser</strong> when NTP servers are unreachable. <strong>NTP</strong> will automatically override browser time when available. <strong>DS3231 RTC Module</strong> is the primary time authority and maintains time across power cycles.</small>
 </div>
 </main>
 <div id="toast"></div>
@@ -2961,7 +2939,6 @@ const char gpio_html[] PROGMEM = R"raw(<!DOCTYPE html>
 function toast(m,ok=true){const t=document.getElementById('toast');t.textContent=m;t.className='show '+(ok?'ok':'er');clearTimeout(t._t);t._t=setTimeout(()=>t.className='',3000);}
 function tick(){fetch('/api/time').then(r=>{if(!r.ok) throw new Error('HTTP '+r.status);return r.json();}).then(d=>{document.getElementById('clk').textContent=d.time||'--:--:--';const de=document.getElementById('date');if(de)de.textContent=(d.weekday?d.weekday+' ':'')+(d.date||'--/--/----');const w=document.querySelector('.wd'),t=document.querySelector('.td');if(w)w.className='dot '+(d.wifi?'g':'r');if(t){let tc='y';const auth=(typeof d.authority==='string'&&d.authority)?d.authority:d.timeSource;if(auth==='ntp'){tc=(d.authorityStale===true)?'y':'g';}else if(auth==='browser')tc='y';else if(auth==='ds3231')tc='g';else if(auth==='internal_rtc')tc='y';else if(auth==='rtc')tc=(d.rtcPresent===true)?'g':'y';else tc='y';t.className='dot '+tc;}}).catch(()=>{});}
 setInterval(tick,1000);tick();
-// change gpio
 const DEFAULT_PINS = [4,5,6,7,11,12,13,14,1,2,42,41,47,21,20,19];
 let gpioData = null;
 function saveGlobalMode() {
@@ -3170,7 +3147,6 @@ const char system_html[] PROGMEM = R"raw(<!DOCTYPE html>
 <button class="btn bwarn" onclick="rst()" style="padding:9px 18px;border-radius:6px;font-size:13px;font-weight:600">&#x1F504; Verify Services</button>
 <button class="btn bdanger" onclick="fct()" style="padding:9px 18px;border-radius:6px;font-size:13px;font-weight:600">&#x26A0; Factory Reset</button>
 </div>
-<p style="color:#90A4AE;font-size:12px;margin-top:10px">Factory reset clears all the settings.<br>Alternatively, hold the <strong>BOOT button</strong> for 5 seconds to trigger a hardware factory reset.</p>
 </div>
 </main>
 <div id="toast"></div>
@@ -3773,7 +3749,6 @@ void loadGPIOConfig() {
                  (gpioConfig.count > 0) &&
                  (gpioConfig.count <= MAX_RELAYS);
     if (valid) {
-        // change gpio
         static const uint8_t SAFE_PINS[] = {4, 5, 6, 7, 11, 12, 13, 14, 1, 2, 42, 41, 47, 21, 20, 19};
         for (uint8_t i = 0; i < gpioConfig.count; i++) {
             bool allowed = false;
@@ -4169,7 +4144,6 @@ inline bool isSingleScheduleSlotActive(uint64_t epoch,
             int todayY   = todayTm->tm_year;
             int todayMon = todayTm->tm_mon;
             int todayDay = todayTm->tm_mday;
-
             const int32_t kOffsetCandidates[3] = { -86400, -82800, -90000 };
             bool foundPrev = false;
             struct tm prevTmCopy;
@@ -4195,7 +4169,6 @@ inline bool isSingleScheduleSlotActive(uint64_t epoch,
                 }
             }
             if (!foundPrev) return false;
-
             if (!(monthMask & (1 << prevTmCopy.tm_mon))) return false;
             if (!(monthDayMask & (1 << (prevTmCopy.tm_mday - 1)))) return false;
             if (sched.days[slot] & (1 << prevTmCopy.tm_wday)) return true;
@@ -6404,7 +6377,6 @@ void handleSaveGPIOConfig() {
         server.send(400, "application/json", "{\"success\":false,\"error\":\"Too many pins\"}");
         return;
     }
-    // change gpio
     static const uint8_t SAFE_PINS[] = {4, 5, 6, 7, 11, 12, 13, 14, 1, 2, 42, 41, 47, 21, 20, 19};
     uint8_t parsed[MAX_RELAYS] = {0};
     uint8_t pi = 0;
@@ -6542,7 +6514,6 @@ void handleAddGPIO() {
         return;
     }
     uint8_t newPin = (uint8_t)rawPin;
-    // change gpio
     static const uint8_t SAFE_PINS[] = {4, 5, 6, 7, 11, 12, 13, 14, 1, 2, 42, 41, 47, 21, 20, 19};
     bool pinAllowed = false;
     for (uint8_t sp : SAFE_PINS) {
